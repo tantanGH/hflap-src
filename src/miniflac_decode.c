@@ -28,21 +28,15 @@ int32_t flac_decode_init(FLAC_DECODE_HANDLE* decode) {
   decode->resample_counter = 0;
   decode->pending_len = 0;
 
-  // fx_flac
-  decode->fx_flac_buffer = NULL;
-  decode->fx_flac = NULL;
-
-  // fx_flac init
-  decode->fx_flac_buffer = himem_alloc(fx_flac_size(FLAC_MAX_BLOCK_SIZE, FLAC_MAX_CHANNEL_COUNT), 1);
-  if (decode->fx_flac_buffer == NULL) goto exit;
-  decode->fx_flac = fx_flac_init(decode->fx_flac_buffer, FLAC_MAX_BLOCK_SIZE, FLAC_MAX_CHANNEL_COUNT);
+  // miniflac
+  memset(&(decode->miniflac), 0, sizeof(MINIFLAC));
 
   // decode buffers
-  decode->samples = himem_malloc(sizeof(int32_t*) * FLAC_MAX_CHANNEL_COUNT, 1);
+  decode->samples = himem_malloc(sizeof(int32_t*) * FLAC_MAX_CHANNELS, 1);
   if (decode->samples == NULL) goto exit;
 
-  for (int16_t i = 0; i < FLAC_MAX_CHANNEL_COUNT; i++) {
-    decode->samples[i] = himem_malloc(sizeof(int32_t) * FLAC_MAX_BLOCK_SIZE, 1);
+  for (int16_t i = 0; i < FLAC_MAX_CHANNELS; i++) {
+    decode->samples[i] = himem_malloc(sizeof(int32_t) * FLAC_DECODE_BUFFER_LEN, 1);
     if (decode->samples[i] == NULL) goto exit;
   }
 
@@ -56,15 +50,6 @@ exit:
 //  close decoder handle
 //
 void flac_decode_close(FLAC_DECODE_HANDLE* decode) {
-
-  if (decode->fx_flac != NULL) {
-    decode->fx_flac = NULL;
-  }
-
-  if (decode->fx_flac_buffer != NULL) {
-    himem_free(decode->fx_flac_buffer, 1);
-    decode->fx_flac_buffer = NULL;
-  }
 
   if (decode->samples != NULL) {
     for (int16_t i = 0; i < FLAC_MAX_CHANNELS; i++) {

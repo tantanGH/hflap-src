@@ -6,9 +6,14 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#include "flac.h"
+//#define MINIFLAC_IMPLEMENTATION
+//#include "miniflac.h"
+#include "src/flac.h"
 
-typedef fx_flac_t FX_FLAC;
+typedef miniflac_t MINIFLAC;
+
+#define FLAC_MAX_CHANNELS         (8)
+#define FLAC_DECODE_BUFFER_LEN    (65535)
 
 typedef struct {
 
@@ -29,8 +34,7 @@ typedef struct {
   int32_t** samples;
   size_t pending_len;
 
-  void* fx_flac_buffer;
-  FX_FLAC* fx_flac;
+  MINIFLAC miniflac;
 
 } FLAC_DECODE_HANDLE;
 

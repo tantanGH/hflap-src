@@ -29,6 +29,10 @@
 
 #include <stdint.h>
 
+#ifdef XDEV68K
+#include "../../src/himem.h"
+#endif
+
 #ifndef FX_EXPORT
 #if __EMSCRIPTEN__
 #import <emscripten.h>
@@ -201,11 +205,19 @@ FX_EXPORT fx_flac_t *fx_flac_init(void *mem, uint16_t max_block_size,
  * Note that this code is implemented as a macro to prevent explicitly having
  * a dependency on malloc while still providing a convenient allocation routine.
  */
+#ifdef XDEV68K
+#define FX_FLAC_ALLOC(max_block_size, max_channels)                            \
+	(fx_flac_size((max_block_size), (max_channels)) == 0U)                     \
+	    ? NULL                                                                 \
+	    : fx_flac_init(himem_malloc(fx_flac_size((max_block_size), (max_channels)), 1), \
+	                   (max_block_size), (max_channels))
+#else
 #define FX_FLAC_ALLOC(max_block_size, max_channels)                            \
 	(fx_flac_size((max_block_size), (max_channels)) == 0U)                     \
 	    ? NULL                                                                 \
 	    : fx_flac_init(malloc(fx_flac_size((max_block_size), (max_channels))), \
 	                   (max_block_size), (max_channels))
+#endif
 
 /**
  * Returns a new fx_flac instance that is sufficient to decode FLAC streams in
