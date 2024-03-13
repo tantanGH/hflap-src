@@ -301,6 +301,8 @@ int32_t flac_decode_resample(FLAC_DECODE_HANDLE* decode, int16_t* decode_buffer,
         }
 
         decode_buffer[ decode_ofs++ ] = ( decode->samples[0][i] + decode->samples[1][i] ) >> 4;
+        decode->resample_counter -= decode->resample_counter;
+
       }
 
     } else if (decoder->frame.header.bps == 24) {
@@ -314,6 +316,7 @@ int32_t flac_decode_resample(FLAC_DECODE_HANDLE* decode, int16_t* decode_buffer,
         }
 
         decode_buffer[ decode_ofs++ ] = ( decode->samples[0][i] + decode->samples[1][i] ) >> 12;
+        decode->resample_counter -= decode->resample_counter;
 
       }
 

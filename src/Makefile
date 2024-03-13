@@ -65,8 +65,9 @@ OBJS = $(addprefix $(INTERMEDIATE_DIR)/,$(patsubst %.c,%.o,$(C_SRCS))) \
 	$(addprefix $(INTERMEDIATE_DIR)/,$(patsubst %.s,%.o,$(ASM_SRCS))) 
 
 # オブジェクトファイル (miniflac)
-OBJS2 = ${MINIFLAC_DIR}/src/_build/*.o
-OBJS2 = \
+OBJS2 = ${MINIFLAC_DIR}/src/_build/flacall.o
+OBJS2a = ${MINIFLAC_DIR}/src/_build/*.o
+OBJS2b = \
   ${MINIFLAC_DIR}/src/_build/application.o \
   ${MINIFLAC_DIR}/src/_build/bitreader.o \
   ${MINIFLAC_DIR}/src/_build/cuesheet.o \
@@ -75,7 +76,6 @@ OBJS2 = \
   ${MINIFLAC_DIR}/src/_build/frameheader.o \
   ${MINIFLAC_DIR}/src/_build/metadata.o \
   ${MINIFLAC_DIR}/src/_build/metadataheader.o \
-  ${MINIFLAC_DIR}/src/_build/mflac.o \
   ${MINIFLAC_DIR}/src/_build/ogg.o \
   ${MINIFLAC_DIR}/src/_build/oggheader.o \
   ${MINIFLAC_DIR}/src/_build/padding.o \

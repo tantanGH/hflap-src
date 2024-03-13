@@ -45,6 +45,11 @@ typedef enum MINIFLAC_RESULT MINIFLAC_RESULT;
 #endif
 
 #define MINIFLAC_API
+
+#ifdef XDEV68K
+#define MINIFLAC_PRIVATE  static inline
+#else
 #define MINIFLAC_PRIVATE
+#endif
 
 #endif

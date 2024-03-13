@@ -110,7 +110,6 @@ miniflac_init(miniflac_t* pFlac, MINIFLAC_CONTAINER container) {
     pFlac->container = container;
     pFlac->oggserial = -1;
     pFlac->oggserial_set = 0;
-
     switch(pFlac->container) {
         case MINIFLAC_CONTAINER_NATIVE: {
             pFlac->state = MINIFLAC_STREAMMARKER_OR_FRAME;

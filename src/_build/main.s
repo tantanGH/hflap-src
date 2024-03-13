@@ -18,13 +18,12 @@ _?LC0:
 	.dc.b $65,$6d,$6f,$72,$79,$20,$46,$4c
 	.dc.b $41,$43,$20,$70,$6c,$61,$79,$65
 	.dc.b $72,$20,$66,$6f,$72,$20,$58,$36
-	.dc.b $38,$30,$78,$30,$20,$2b,$20,$4d
-	.dc.b $65,$72,$63,$75,$72,$79,$2d,$55
-	.dc.b $4e,$49,$54,$20,$76,$65,$72,$73
-	.dc.b $69,$6f,$6e,$20,$30,$2e,$31,$2e
-	.dc.b $30,$20,$28,$32,$30,$32,$34,$2f
-	.dc.b $30,$33,$2f,$31,$31,$29,$20,$62
-	.dc.b $79,$20,$74,$61,$6e,$74,$61,$6e
+	.dc.b $38,$30,$78,$30,$20,$76,$65,$72
+	.dc.b $73,$69,$6f,$6e,$20,$30,$2e,$31
+	.dc.b $2e,$32,$20,$28,$32,$30,$32,$34
+	.dc.b $2f,$30,$33,$2f,$31,$33,$29,$20
+	.dc.b $62,$79,$20,$74,$61,$6e,$74,$61
+	.dc.b $6e
 	.dc.b $00				
 _?LC1:						
 	.dc.b $75,$73,$61,$67,$65,$3a,$20,$68
@@ -375,6 +374,9 @@ _?LC30:
 	.dc.b $65,$6c,$65,$64,$2e
 	.dc.b $00				
 _?LC31:						
+	.dc.b $0d,$1b,$5b,$30,$4b,$1b,$4d
+	.dc.b $00				
+_?LC32:						
 	.dc.b $0a,$4e,$6f,$77,$20,$70,$6c,$61
 	.dc.b $79,$69,$6e,$67,$20,$2e,$2e,$2e
 	.dc.b $20,$70,$75,$73,$68,$20,$5b,$45
@@ -385,30 +387,30 @@ _?LC31:
 	.dc.b $70,$61,$75,$73,$65,$2e,$1b,$5b
 	.dc.b $30,$4b
 	.dc.b $00				
-_?LC32:						
+_?LC33:						
 	.dc.b $0d,$0a,$53,$74,$6f,$70,$70,$65
 	.dc.b $64,$2e
 	.dc.b $00				
-_?LC33:						
+_?LC34:						
 	.dc.b $0d,$0a,$46,$69,$6e,$69,$73,$68
 	.dc.b $65,$64,$2e,$0d,$0a
 	.dc.b $00				
-_?LC34:						
+_?LC35:						
 	.dc.b $0a,$25,$73,$0a
 	.dc.b $00				
-_?LC35:						
+_?LC36:						
 	.dc.b $7c
 	.dc.b $00				
-_?LC36:						
+_?LC37:						
 	.dc.b $3e
 	.dc.b $00				
-_?LC37:						
+_?LC38:						
 	.dc.b $2a
 	.dc.b $00				
-_?LC38:						
+_?LC39:						
 	.dc.b $0d,$0a
 	.dc.b $00				
-_?LC39:						
+_?LC40:						
 	.dc.b $65,$72,$72,$6f,$72,$3a,$20,$25
 	.dc.b $73,$0a
 	.dc.b $00				
@@ -418,7 +420,7 @@ _?LC39:
 	.globl	_main				
 						
 _main:						
-	link.w a6,#-900				
+	link.w a6,#-904				
 	movem.l d3/d4/d5/d6/d7/a3/a4/a5,-(sp)	
 	move.l 8(a6),d4				
 	move.l 12(a6),d5			
@@ -448,7 +450,7 @@ _main:
 	jbsr _ROMVER				
 						
 	cmp.l #318767103,d0			
-	jbhi _?L375				
+	jbhi _?L374				
 _?L43:						
 						
 	pea _cp932rsc_mpu_type			
@@ -456,16 +458,16 @@ _?L43:
 	jbsr _strcpy				
 	addq.l #8,sp				
 						
-	moveq #1,d1				
-	move.l d1,-892(a6)			
+	moveq #1,d2				
+	move.l d2,-896(a6)			
 _?L46:						
 						
 	jbsr _C_CURON				
 						
 	move.l _g_funckey_mode,d0		
 						
-	jbpl _?L376				
-_?L215:						
+	jbpl _?L375				
+_?L213:						
 						
 	move.l _g_abort_vector1,-(sp)		
 	move.l #65521,-(sp)			
@@ -482,14 +484,14 @@ _?L215:
 	addq.l #4,sp				
 						
 	tst.b -782(a6)				
-	jbne _?L377				
+	jbne _?L376				
 _?L41:						
 						
-	move.l -892(a6),d0			
-	movem.l -932(a6),d3/d4/d5/d6/d7/a3/a4/a5
+	move.l -896(a6),d0			
+	movem.l -936(a6),d3/d4/d5/d6/d7/a3/a4/a5
 	unlk a6					
 	rts					
-_?L375:						
+_?L374:						
 						
 	pea 52.w				
 	clr.l -(sp)				
@@ -519,23 +521,23 @@ _?L375:
 	cmp.l d0,d1				
 	jbge _?L43				
 						
-	moveq #1,d0				
-	cmp.l d4,d0				
-	jbge _?L378				
+	moveq #1,d2				
+	cmp.l d4,d2				
+	jbge _?L377				
 						
 	moveq #1,d3				
 						
 	clr.w -868(a6)				
 						
-	clr.w -888(a6)				
+	clr.w -892(a6)				
 						
-	clr.w -874(a6)				
+	clr.w -870(a6)				
 						
 	move.w #4,-884(a6)			
 						
-	move.w #1,-886(a6)			
+	move.w #1,-890(a6)			
 						
-	move.w #6,-876(a6)			
+	move.w #6,-872(a6)			
 						
 	clr.l d7				
 	moveq #1,d0				
@@ -548,23 +550,23 @@ _?L44:
 						
 	lsl.l #2,d0				
 	add.l d5,d0				
-	move.l d0,-892(a6)			
+	move.l d0,-896(a6)			
 	move.l d0,a0				
 	move.l (a0),a5				
 						
 	cmp.b #45,(a5)				
-	jbeq _?L379				
+	jbeq _?L378				
 _?L47:						
 						
 	tst.l d7				
-	jbne _?L380				
+	jbne _?L379				
 						
 	move.l a5,-(sp)				
 	jbsr (a3)				
 	addq.l #4,sp				
 						
-	moveq #4,d1				
-	cmp.l d0,d1				
+	moveq #4,d2				
+	cmp.l d0,d2				
 	jbcc _?L62				
 						
 	pea _?LC14				
@@ -583,7 +585,7 @@ _?L50:
 	ext.l d0				
 	cmp.l d0,d4				
 	jbgt _?L44				
-_?L391:						
+_?L390:						
 						
 	tst.l d7				
 	jbeq _?L63				
@@ -592,8 +594,8 @@ _?L391:
 	jbsr (a3)				
 	addq.l #4,sp				
 						
-	moveq #4,d1				
-	cmp.l d0,d1				
+	moveq #4,d2				
+	cmp.l d0,d2				
 	jbcc _?L63				
 						
 	jbsr _himem_isavailable			
@@ -604,9 +606,9 @@ _?L391:
 	jbsr _pcm8a_isavailable			
 						
 	tst.l d0				
-	jbeq _?L381				
+	jbeq _?L380				
 						
-	tst.w -888(a6)				
+	tst.w -892(a6)				
 	jbeq _?L73				
 						
 	jbsr _pcm8a_pause			
@@ -618,7 +620,7 @@ _?L72:
 						
 	jbsr _C_CUROFF				
 						
-	tst.w -888(a6)				
+	tst.w -892(a6)				
 	jble _?L74				
 						
 	clr.l -(sp)				
@@ -626,19 +628,20 @@ _?L72:
 	addq.l #4,sp				
 _?L74:						
 						
-	move.w #1,-872(a6)			
+	move.w #1,-878(a6)			
 	clr.l -882(a6)				
-	moveq #1,d1				
-	move.l d1,-892(a6)			
+	moveq #1,d2				
+	move.l d2,-896(a6)			
 						
 	move.w -884(a6),a0			
 	move.l a0,-854(a6)			
+						
 	move.l d7,-866(a6)			
 	move.w d3,d7				
-_?L213:						
+_?L211:						
 						
-	tst.w -888(a6)				
-	jbgt _?L382				
+	tst.w -892(a6)				
+	jbgt _?L381				
 _?L77:						
 						
 	pea 526.w				
@@ -652,7 +655,7 @@ _?L77:
 	addq.l #4,sp				
 						
 	tst.l d0				
-	jbne _?L383				
+	jbne _?L382				
 _?L78:						
 						
 	pea _?LC15				
@@ -661,10 +664,10 @@ _?L78:
 	addq.l #8,sp				
 	move.l d0,d3				
 						
-	jbeq _?L384				
+	jbeq _?L383				
 						
-	tst.w -888(a6)				
-	jbgt _?L385				
+	tst.w -892(a6)				
+	jbgt _?L384				
 _?L81:						
 						
 	pea 2.w					
@@ -693,13 +696,15 @@ _?L81:
 	move.l d0,a3				
 						
 	tst.l d0				
-	jbeq _?L386				
+	jbeq _?L385				
 						
-	tst.w -874(a6)				
-	jbeq _?L219				
+	tst.w -870(a6)				
+	jbeq _?L217				
 						
 	pea _?LC16				
-	jbsr _printf				
+	move.l #_printf,-888(a6)		
+	lea _printf,a1				
+	jbsr (a1)				
 						
 	clr.l (sp)				
 	move.l #524288,-(sp)			
@@ -707,7 +712,7 @@ _?L81:
 	addq.l #8,sp				
 	move.l d0,d6				
 						
-	jbeq _?L387				
+	jbeq _?L386				
 						
 	clr.l d5				
 	lea _fread,a4				
@@ -738,7 +743,8 @@ _?L84:
 						
 	addq.l #4,sp				
 	move.l #_?LC17,(sp)			
-	jbsr _printf				
+	move.l -888(a6),a0			
+	jbsr (a0)				
 	addq.l #4,sp				
 _?L85:						
 						
@@ -752,7 +758,7 @@ _?L85:
 	lea (12,sp),sp				
 						
 	tst.l d0				
-	jbne _?L388				
+	jbne _?L387				
 						
 	moveq #-9,d0				
 	and.l -494(a6),d0			
@@ -767,7 +773,7 @@ _?L85:
 						
 	clr.l d3				
 	lea _ONTIME,a4				
-	move.l #_B_PRINT,-900(a6)		
+	move.l #_B_PRINT,d6			
 _?L79:						
 						
 	tst.w d7				
@@ -777,59 +783,59 @@ _?L119:
 	jbsr _pcm8pp_pause			
 						
 	jbsr _pcm8pp_stop			
-_?L198:						
+_?L196:						
 						
 	jbsr (a4)				
 						
 	move.w #19,a5				
 	add.l d0,a5				
-_?L199:						
+_?L197:						
 						
 	jbsr (a4)				
 						
 	cmp.l a5,d0				
-	jble _?L199				
+	jble _?L197				
 						
 	tst.l d3				
-	jbeq _?L200				
+	jbeq _?L198				
 						
 	move.l d3,-(sp)				
 	jbsr _fclose				
 	addq.l #4,sp				
-_?L200:						
+_?L198:						
 						
 	tst.l a3				
-	jbeq _?L201				
+	jbeq _?L199				
 						
 	pea 1.w					
 	move.l a3,-(sp)				
 	jbsr _himem_free			
 	addq.l #8,sp				
-_?L201:						
+_?L199:						
 						
 	pea -526(a6)				
 	jbsr _flac_decode_close			
 	addq.l #4,sp				
 						
 	tst.w d7				
-	jbeq _?L389				
+	jbeq _?L388				
 						
 	move.l _g_init_chain_table_ex,a3	
 	lea _himem_free,a4			
 						
 	tst.l a3				
-	jbeq _?L210				
-_?L208:						
+	jbeq _?L208				
+_?L206:						
 						
 	move.l (a3),d0				
 						
-	jbeq _?L209				
+	jbeq _?L207				
 						
 	pea 1.w					
 	move.l d0,-(sp)				
 	jbsr (a4)				
 	addq.l #8,sp				
-_?L209:						
+_?L207:						
 						
 	move.l 8(a3),d3				
 						
@@ -839,11 +845,11 @@ _?L209:
 	addq.l #8,sp				
 						
 	tst.l d3				
-	jbeq _?L210				
+	jbeq _?L208				
 						
 	move.l d3,a3				
-	jbra _?L208				
-_?L379:						
+	jbra _?L206				
+_?L378:						
 						
 	move.l a5,-(sp)				
 	jbsr (a3)				
@@ -856,7 +862,7 @@ _?L379:
 	move.b 1(a5),d1				
 						
 	cmp.b #118,d1				
-	jbeq _?L390				
+	jbeq _?L389				
 	move.b d1,d0				
 	add.b #-98,d0				
 	cmp.b #18,d0				
@@ -881,7 +887,7 @@ _?L54:
 	.dc.w _?L52-_?L54			
 	.dc.w _?L56-_?L54			
 	.dc.w _?L52-_?L54			
-	.dc.w _?L218-_?L54			
+	.dc.w _?L216-_?L54			
 	.dc.w _?L52-_?L54			
 	.dc.w _?L52-_?L54			
 	.dc.w _?L52-_?L54			
@@ -891,7 +897,7 @@ _?L54:
 _?L52:						
 						
 	cmp.b #104,d1				
-	jbeq _?L360				
+	jbeq _?L359				
 						
 	move.l a5,-(sp)				
 	pea _cp932rsc_unknown_option		
@@ -899,11 +905,11 @@ _?L52:
 	jbsr _sprintf				
 	lea (12,sp),sp				
 						
-	moveq #1,d1				
-	move.l d1,-892(a6)			
+	moveq #1,d2				
+	move.l d2,-896(a6)			
 _?L51:						
 						
-	tst.w -888(a6)				
+	tst.w -892(a6)				
 	jble _?L46				
 						
 	clr.l -(sp)				
@@ -971,8 +977,8 @@ _?L51:
 						
 	move.l _g_funckey_mode,d0		
 						
-	jbmi _?L215				
-_?L376:						
+	jbmi _?L213				
+_?L375:						
 						
 	move.l d0,-(sp)				
 	jbsr _C_FNKMOD				
@@ -994,15 +1000,15 @@ _?L376:
 						
 	tst.b -782(a6)				
 	jbeq _?L41				
-_?L377:						
+_?L376:						
 						
 	pea -782(a6)				
-	pea _?LC39				
+	pea _?LC40				
 	jbsr _printf				
 	addq.l #8,sp				
 						
-	move.l -892(a6),d0			
-	movem.l -932(a6),d3/d4/d5/d6/d7/a3/a4/a5
+	move.l -896(a6),d0			
+	movem.l -936(a6),d3/d4/d5/d6/d7/a3/a4/a5
 	unlk a6					
 	rts					
 _?L53:						
@@ -1011,12 +1017,12 @@ _?L53:
 	jbsr _atoi				
 	addq.l #4,sp				
 						
-	move.w d0,-888(a6)			
+	move.w d0,-892(a6)			
 						
 	cmp.w #100,d0				
-	jbhi _?L360				
+	jbhi _?L58				
 						
-	move.l -892(a6),a0			
+	move.l -896(a6),a0			
 	move.l (a0),-(sp)			
 	jbsr (a3)				
 	addq.l #4,sp				
@@ -1024,12 +1030,12 @@ _?L53:
 	moveq #2,d1				
 	cmp.l d0,d1				
 	jbcs _?L50				
-_?L360:						
+_?L58:						
 						
 	jbsr _show_help_message			
 						
-	moveq #1,d1				
-	move.l d1,-892(a6)			
+	moveq #1,d2				
+	move.l d2,-896(a6)			
 						
 	jbra _?L51				
 _?L56:						
@@ -1038,14 +1044,14 @@ _?L56:
 	jbsr _atoi				
 	addq.l #4,sp				
 						
-	move.w d0,-886(a6)			
+	move.w d0,-890(a6)			
 	addq.w #1,d3				
 						
 	move.w d3,d0				
 	ext.l d0				
 	cmp.l d0,d4				
 	jbgt _?L44				
-	jbra _?L391				
+	jbra _?L390				
 _?L57:						
 						
 	pea 2(a5)				
@@ -1057,28 +1063,29 @@ _?L57:
 	subq.w #3,d0				
 						
 	cmp.w #29,d0				
-	jbhi _?L360				
-	addq.w #1,d3				
+	jbls _?L50				
+_?L359:						
 						
-	move.w d3,d0				
-	ext.l d0				
-	cmp.l d0,d4				
-	jbgt _?L44				
-	jbra _?L391				
-_?L390:						
+	jbsr _show_help_message			
+						
+	moveq #1,d1				
+	move.l d1,-896(a6)			
+						
+	jbra _?L51				
+_?L389:						
 						
 	pea 2(a5)				
 	jbsr _atoi				
 	addq.l #4,sp				
 						
-	move.w d0,-876(a6)			
+	move.w d0,-872(a6)			
 						
 	subq.w #1,d0				
 						
 	cmp.w #14,d0				
-	jbhi _?L360				
+	jbhi _?L58				
 						
-	move.l -892(a6),a0			
+	move.l -896(a6),a0			
 	move.l (a0),-(sp)			
 	jbsr (a3)				
 	addq.l #4,sp				
@@ -1086,7 +1093,7 @@ _?L390:
 	moveq #2,d1				
 	cmp.l d0,d1				
 	jbcs _?L50				
-	jbra _?L360				
+	jbra _?L58				
 _?L62:						
 						
 	pea _cp932rsc_not_flac_file		
@@ -1097,9 +1104,9 @@ _?L62:
 _?L65:						
 						
 	moveq #1,d1				
-	move.l d1,-892(a6)			
+	move.l d1,-896(a6)			
 	jbra _?L51				
-_?L218:						
+_?L216:						
 						
 	move.w #1,-868(a6)			
 	addq.w #1,d3				
@@ -1108,18 +1115,18 @@ _?L218:
 	ext.l d0				
 	cmp.l d0,d4				
 	jbgt _?L44				
-	jbra _?L391				
+	jbra _?L390				
 _?L55:						
 						
-	move.w #1,-874(a6)			
+	move.w #1,-870(a6)			
 	addq.w #1,d3				
 						
 	move.w d3,d0				
 	ext.l d0				
 	cmp.l d0,d4				
 	jbgt _?L44				
-	jbra _?L391				
-_?L380:						
+	jbra _?L390				
+_?L379:						
 						
 	pea _cp932rsc_too_many_files		
 						
@@ -1132,7 +1139,7 @@ _?L63:
 	jbsr _show_help_message			
 						
 	moveq #1,d1				
-	move.l d1,-892(a6)			
+	move.l d1,-896(a6)			
 	jbra _?L51				
 _?L66:						
 						
@@ -1141,7 +1148,7 @@ _?L66:
 	jbsr _strcpy				
 	addq.l #8,sp				
 	jbra _?L65				
-_?L382:						
+_?L381:						
 						
 	jbsr _G_CLR_ON				
 						
@@ -1211,7 +1218,7 @@ _?L382:
 						
 	tst.l d0				
 	jbeq _?L78				
-_?L383:						
+_?L382:						
 						
 	pea _cp932rsc_flac_decoder_init_error	
 	pea -782(a6)				
@@ -1222,12 +1229,12 @@ _?L383:
 						
 	sub.l a3,a3				
 	lea _ONTIME,a4				
-	move.l #_B_PRINT,-900(a6)		
+	move.l #_B_PRINT,d6			
 						
 	tst.w d7				
 	jbne _?L119				
 	jbra _?L110				
-_?L385:						
+_?L384:						
 						
 	clr.l -(sp)				
 	pea 384.w				
@@ -1273,53 +1280,52 @@ _?L103:
 	jbsr _strcpy				
 	addq.l #8,sp				
 						
-	clr.w -872(a6)				
+	clr.w -878(a6)				
 						
 	clr.l d3				
 	lea _ONTIME,a4				
-	move.l #_B_PRINT,-900(a6)		
+	move.l #_B_PRINT,d6			
 _?L110:						
 						
 	jbsr _pcm8a_pause			
 						
 	jbsr _pcm8a_stop			
-_?L425:						
+_?L426:						
 						
 	jbsr (a4)				
 						
 	move.w #19,a5				
 	add.l d0,a5				
-	jbra _?L199				
-_?L210:						
+	jbra _?L197				
+_?L208:						
 						
 	clr.l _g_init_chain_table_ex		
-_?L204:						
+_?L202:						
 						
-	tst.l -892(a6)				
-	jbne _?L211				
+	tst.l -896(a6)				
+	jbne _?L209				
 						
-	tst.w -886(a6)				
-	jbeq _?L212				
+	tst.w -890(a6)				
+	jbeq _?L210				
 						
-	subq.w #1,-886(a6)			
+	subq.w #1,-890(a6)			
 						
-	tst.w -886(a6)				
-	jble _?L211				
-_?L212:						
+	tst.w -890(a6)				
+	jble _?L209				
+_?L210:						
 						
-	pea _?LC38				
-	move.l -900(a6),a0			
+	pea _?LC39				
+	move.l d6,a0				
 	jbsr (a0)				
 	addq.l #4,sp				
 						
-	tst.w -888(a6)				
+	tst.w -892(a6)				
 	jble _?L77				
-	jbra _?L382				
-_?L211:						
+	jbra _?L381				
+_?L209:						
 						
-	move.l -900(a6),-882(a6)		
-	pea _?LC38				
-	move.l -882(a6),a1			
+	pea _?LC39				
+	move.l d6,a1				
 	jbsr (a1)				
 	addq.l #4,sp				
 	jbra _?L51				
@@ -1334,11 +1340,11 @@ _?L88:
 	jbeq _?L90				
 						
 	cmp.l #96000,d0				
-	jbne _?L392				
+	jbne _?L391				
 _?L90:						
 						
-	moveq #2,d0				
-	cmp.l -498(a6),d0			
+	moveq #2,d2				
+	cmp.l -498(a6),d2			
 	jbeq _?L91				
 						
 	pea _cp932rsc_flac_channel_error	
@@ -1348,9 +1354,9 @@ _?L90:
 						
 	clr.l d3				
 	lea _ONTIME,a4				
-	move.l #_B_PRINT,-900(a6)		
+	move.l #_B_PRINT,d6			
 	jbra _?L79				
-_?L392:						
+_?L391:						
 						
 	pea _cp932rsc_flac_freq_error		
 	pea -782(a6)				
@@ -1359,26 +1365,26 @@ _?L392:
 						
 	clr.l d3				
 	lea _ONTIME,a4				
-	move.l #_B_PRINT,-900(a6)		
+	move.l #_B_PRINT,d6			
 	jbra _?L79				
-_?L389:						
+_?L388:						
 						
 	move.l _g_init_chain_table,a3		
 	lea _himem_free,a4			
 						
 	tst.l a3				
-	jbeq _?L207				
-_?L203:						
+	jbeq _?L205				
+_?L201:						
 						
 	move.l (a3),d0				
 						
-	jbeq _?L205				
+	jbeq _?L203				
 						
 	pea 1.w					
 	move.l d0,-(sp)				
 	jbsr (a4)				
 	addq.l #8,sp				
-_?L205:						
+_?L203:						
 						
 	move.l 6(a3),d3				
 						
@@ -1388,15 +1394,15 @@ _?L205:
 	addq.l #8,sp				
 						
 	tst.l d3				
-	jbeq _?L207				
+	jbeq _?L205				
 						
 	move.l d3,a3				
-	jbra _?L203				
-_?L207:						
+	jbra _?L201				
+_?L205:						
 						
 	clr.l _g_init_chain_table		
-	jbra _?L204				
-_?L219:						
+	jbra _?L202				
+_?L217:						
 						
 	clr.l d6				
 	lea _fread,a4				
@@ -1427,47 +1433,53 @@ _?L86:
 	jbra _?L85				
 _?L91:						
 						
-	tst.w -872(a6)				
+	tst.w -878(a6)				
 	jbne _?L92				
 						
-	tst.w -888(a6)				
-	jble _?L93				
+	tst.w -892(a6)				
+	jble _?L392				
 _?L92:						
 						
 	pea 10.w				
-	jbsr _putchar				
+	lea _putchar,a4				
+	jbsr (a4)				
 						
 	move.l -866(a6),(sp)			
 	pea _?LC18				
-	lea _printf,a4				
-	jbsr (a4)				
+	move.l #_printf,-888(a6)		
+	lea _printf,a0				
+	jbsr (a0)				
 						
 	addq.l #4,sp				
 	move.l d4,(sp)				
 	pea _?LC19				
-	jbsr (a4)				
+	move.l -888(a6),a1			
+	jbsr (a1)				
 						
 	addq.l #4,sp				
 	move.l #_?LC20,(sp)			
 	pea _?LC21				
-	jbsr (a4)				
+	move.l -888(a6),a0			
+	jbsr (a0)				
 	addq.l #8,sp				
 						
-	move.w -876(a6),a0			
+	move.w -872(a6),a0			
 	cmp.w #1,d7				
-	jbeq _?L221				
+	jbeq _?L219				
 						
 	move.l #_?LC10,d0			
 						
 	move.l a0,-(sp)				
 	move.l d0,-(sp)				
 	pea _?LC22				
-	jbsr (a4)				
+	move.l -888(a6),a1			
+	jbsr (a1)				
 						
 	addq.l #8,sp				
 	move.l -502(a6),(sp)			
 	pea _?LC23				
-	jbsr (a4)				
+	move.l -888(a6),a0			
+	jbsr (a0)				
 	addq.l #8,sp				
 						
 	move.l #_?LC13,d0			
@@ -1478,12 +1490,14 @@ _?L95:
 						
 	move.l d0,-(sp)				
 	pea _?LC24				
-	jbsr (a4)				
+	move.l -888(a6),a0			
+	jbsr (a0)				
 						
 	addq.l #4,sp				
 	move.l -494(a6),(sp)			
 	pea _?LC25				
-	jbsr (a4)				
+	move.l -888(a6),a1			
+	jbsr (a1)				
 	addq.l #8,sp				
 						
 	move.l -514(a6),d0			
@@ -1492,7 +1506,8 @@ _?L95:
 						
 	move.l d0,-(sp)				
 	pea _?LC26				
-	jbsr (a4)				
+	move.l -888(a6),a0			
+	jbsr (a0)				
 	addq.l #8,sp				
 _?L96:						
 						
@@ -1502,7 +1517,8 @@ _?L96:
 						
 	move.l d0,-(sp)				
 	pea _?LC27				
-	jbsr (a4)				
+	move.l -888(a6),a1			
+	jbsr (a1)				
 	addq.l #8,sp				
 _?L97:						
 						
@@ -1512,24 +1528,24 @@ _?L97:
 						
 	move.l d0,-(sp)				
 	pea _?LC28				
-	jbsr (a4)				
+	move.l -888(a6),a0			
+	jbsr (a0)				
 	addq.l #8,sp				
 _?L98:						
 						
 	pea 10.w				
-	jbsr _putchar				
+	jbsr (a4)				
 	addq.l #4,sp				
-_?L93:						
 	move.l -882(a6),d4			
 	addq.l #1,d4				
 						
 	clr.l d3				
-	clr.l -872(a6)				
-	clr.l d6				
+	clr.l d5				
+	clr.l -878(a6)				
 						
 	lea _flac_decode_full,a4		
 	move.l a3,-862(a6)			
-	move.l -854(a6),d5			
+	move.l -854(a6),d6			
 _?L99:						
 	move.l d4,d1				
 	subq.l #1,d1				
@@ -1539,10 +1555,11 @@ _?L99:
 	jbge _?L394				
 	addq.l #1,d3				
 						
-	move.l d5,-(sp)				
+	move.l d6,-(sp)				
 	move.l d3,-(sp)				
 	pea _?LC29				
-	jbsr _printf				
+	move.l -888(a6),a1			
+	jbsr (a1)				
 	lea (12,sp),sp				
 						
 	tst.w d7				
@@ -1593,14 +1610,14 @@ _?L99:
 	jbeq _?L398				
 _?L117:						
 						
-	tst.l -872(a6)				
+	tst.l d5				
 	jbeq _?L118				
 						
-	move.l -872(a6),a0			
+	move.l d5,a0				
 	move.l a3,8(a0)				
 _?L118:						
 						
-	move.l a3,-872(a6)			
+	move.l a3,d5				
 _?L109:						
 						
 	jbsr _B_SFTSNS				
@@ -1618,6 +1635,19 @@ _?L398:
 						
 	move.l a3,_g_init_chain_table_ex	
 	jbra _?L117				
+_?L392:						
+	move.l #_printf,-888(a6)		
+	move.l -882(a6),d4			
+	addq.l #1,d4				
+						
+	clr.l d3				
+	clr.l d5				
+	clr.l -878(a6)				
+						
+	lea _flac_decode_full,a4		
+	move.l a3,-862(a6)			
+	move.l -854(a6),d6			
+	jbra _?L99				
 _?L393:						
 						
 	move.l #_?LC12,d0			
@@ -1670,20 +1700,20 @@ _?L395:
 	jbeq _?L401				
 _?L107:						
 						
-	tst.l d6				
+	tst.l -878(a6)				
 	jbeq _?L108				
 						
-	move.l d6,a0				
+	move.l -878(a6),a0			
 	move.l a3,6(a0)				
 _?L108:						
 						
-	move.l a3,d6				
+	move.l a3,-878(a6)			
 	jbra _?L109				
 _?L401:						
 						
 	move.l a3,_g_init_chain_table		
 	jbra _?L107				
-_?L388:						
+_?L387:						
 						
 	pea _cp932rsc_flac_decoder_setup_error	
 	pea -782(a6)				
@@ -1692,25 +1722,25 @@ _?L388:
 						
 	clr.l d3				
 	lea _ONTIME,a4				
-	move.l #_B_PRINT,-900(a6)		
+	move.l #_B_PRINT,d6			
 						
 	tst.w d7				
 	jbne _?L119				
 	jbra _?L110				
-_?L387:						
+_?L386:						
 						
 	pea _cp932rsc_mainmem_shortage		
 	pea -782(a6)				
 	jbsr _strcpy				
 	addq.l #8,sp				
 	lea _ONTIME,a4				
-	move.l #_B_PRINT,-900(a6)		
+	move.l #_B_PRINT,d6			
 _?L402:						
 						
 	tst.w d7				
 	jbne _?L119				
 	jbra _?L110				
-_?L384:						
+_?L383:						
 						
 	pea _cp932rsc_file_open_error		
 	pea -782(a6)				
@@ -1719,12 +1749,12 @@ _?L384:
 						
 	sub.l a3,a3				
 	lea _ONTIME,a4				
-	move.l #_B_PRINT,-900(a6)		
+	move.l #_B_PRINT,d6			
 						
 	tst.w d7				
 	jbne _?L119				
 	jbra _?L110				
-_?L386:						
+_?L385:						
 						
 	pea _cp932rsc_himem_shortage		
 						
@@ -1732,9 +1762,9 @@ _?L386:
 	jbsr _strcpy				
 	addq.l #8,sp				
 	lea _ONTIME,a4				
-	move.l #_B_PRINT,-900(a6)		
+	move.l #_B_PRINT,d6			
 	jbra _?L402				
-_?L381:						
+_?L380:						
 						
 	jbsr _pcm8pp_isavailable		
 						
@@ -1745,7 +1775,7 @@ _?L381:
 						
 	move.l d0,_g_original_pcm8pp_frequency_mode
 						
-	tst.w -888(a6)				
+	tst.w -892(a6)				
 	jbeq _?L403				
 						
 	jbsr _pcm8pp_pause			
@@ -1754,18 +1784,20 @@ _?L381:
 						
 	moveq #1,d3				
 	jbra _?L72				
-_?L221:						
+_?L219:						
 						
 	move.l #_?LC11,d0			
 	move.l a0,-(sp)				
 	move.l d0,-(sp)				
 	pea _?LC22				
-	jbsr (a4)				
+	move.l -888(a6),a1			
+	jbsr (a1)				
 						
 	addq.l #8,sp				
 	move.l -502(a6),(sp)			
 	pea _?LC23				
-	jbsr (a4)				
+	move.l -888(a6),a0			
+	jbsr (a0)				
 	addq.l #8,sp				
 						
 	move.l #_?LC13,d0			
@@ -1776,13 +1808,13 @@ _?L221:
 _?L394:						
 						
 	move.l -862(a6),a3			
-	move.w -876(a6),d3			
+	move.w -872(a6),d3			
 	swap d3					
 	clr.w d3				
 						
-	move.l d3,d1				
-	or.w #5123,d1				
-	move.l d1,-842(a6)			
+	move.l d3,d2				
+	or.w #5123,d2				
+	move.l d2,-842(a6)			
 						
 	clr.w d4				
 						
@@ -1816,18 +1848,22 @@ _?L116:
 	move.l d3,-858(a6)			
 						
 	cmp.w #1,d7				
-	jbeq _?L143				
+	jbeq _?L409				
 _?L139:						
 						
 	pea _?LC31				
+	move.l -888(a6),a0			
+	jbsr (a0)				
+						
+	move.l #_?LC32,(sp)			
 	jbsr _puts				
 	addq.l #4,sp				
 						
 	lea _ONTIME,a4				
 	jbsr (a4)				
-	move.w #19,a0				
-	add.l d0,a0				
-	move.l a0,-862(a6)			
+	move.w #19,a1				
+	add.l d0,a1				
+	move.l a1,-862(a6)			
 _?L147:						
 						
 	jbsr (a4)				
@@ -1839,12 +1875,12 @@ _?L147:
 	clr.l -846(a6)				
 						
 	clr.w d3				
-	move.l #_B_PRINT,-900(a6)		
+	move.l #_B_PRINT,d6			
 						
 	jbsr _B_KEYSNS				
 						
 	tst.l d0				
-	jbne _?L409				
+	jbne _?L410				
 _?L149:						
 						
 	tst.w d3				
@@ -1862,7 +1898,7 @@ _?L154:
 	jbeq _?L160				
 						
 	tst.w d4				
-	jbne _?L358				
+	jbne _?L356				
 	clr.w d3				
 _?L158:						
 						
@@ -1870,13 +1906,13 @@ _?L158:
 	pea 12.w				
 	jbsr (a5)				
 	addq.l #8,sp				
-	move.l d0,d5				
+	move.l d0,-904(a6)			
 						
-	jbeq _?L183				
+	jbeq _?L182				
 						
 	pea 12.w				
 	clr.l -(sp)				
-	move.l d0,-(sp)				
+	move.l -904(a6),-(sp)			
 	jbsr _memset				
 						
 	addq.l #8,sp				
@@ -1886,10 +1922,10 @@ _?L158:
 	jbsr (a5)				
 	addq.l #8,sp				
 						
-	move.l d5,a0				
+	move.l -904(a6),a0			
 	move.l d0,(a0)				
 						
-	jbeq _?L183				
+	jbeq _?L182				
 						
 	pea -838(a6)				
 	move.l #176400,-(sp)			
@@ -1899,21 +1935,21 @@ _?L158:
 	lea (16,sp),sp				
 						
 	tst.l d0				
-	jbne _?L410				
+	jbne _?L411				
 						
 	move.l -838(a6),d0			
 						
-	jbeq _?L411				
+	jbeq _?L364				
 						
-	move.l d5,a1				
+	move.l -904(a6),a1			
 	move.l d0,4(a1)				
 						
-	move.l -872(a6),a0			
-	move.l d5,8(a0)				
+	move.l d5,a0				
+	move.l a1,8(a0)				
 						
 	addq.l #1,-882(a6)			
 						
-	move.w -880(a6),-872(a6)		
+	move.w -880(a6),d5			
 						
 	clr.l -(sp)				
 	jbsr _pcm8pp_get_block_counter		
@@ -1924,10 +1960,10 @@ _?L158:
 	sub.w d0,d4				
 						
 	cmp.w -862(a6),d4			
-	jblt _?L187				
+	jblt _?L186				
 						
 	tst.w -868(a6)				
-	jbeq _?L188				
+	jbeq _?L412				
 						
 	move.w -862(a6),d4			
 _?L189:						
@@ -1937,35 +1973,35 @@ _?L189:
 	addq.l #4,sp				
 						
 	tst.l d0				
-	jbeq _?L412				
-_?L195:						
+	jbeq _?L413				
+_?L193:						
 	move.w d4,-862(a6)			
-	move.l d5,-872(a6)			
+	move.l -904(a6),d5			
 	clr.w d4				
-_?L429:						
+_?L430:						
 						
 	jbsr _B_KEYSNS				
 						
 	tst.l d0				
 	jbeq _?L149				
-	jbra _?L409				
+	jbra _?L410				
 _?L400:						
 						
-	move.l a3,d5				
+	move.l a3,d6				
 	move.l -862(a6),a3			
 	pea 1.w					
-	move.l d5,a0				
+	move.l d6,a0				
 	move.l (a0),-(sp)			
 	lea _himem_free,a4			
 	jbsr (a4)				
 	addq.l #8,sp				
 						
 	pea 1.w					
-	move.l d5,-(sp)				
+	move.l d6,-(sp)				
 	jbsr (a4)				
 	addq.l #8,sp				
 						
-	move.w -876(a6),d3			
+	move.w -872(a6),d3			
 	swap d3					
 	clr.w d3				
 						
@@ -1985,7 +2021,7 @@ _?L106:
 	jbsr _pcm8a_play_linked_array_chain	
 	lea (12,sp),sp				
 	jbra _?L116				
-_?L409:						
+_?L410:						
 						
 	jbsr _B_KEYINP				
 						
@@ -1995,7 +2031,7 @@ _?L409:
 						
 	and.w #-17,d0				
 	cmp.w #1,d0				
-	jbeq _?L413				
+	jbeq _?L414				
 						
 	cmp.w #53,d1				
 	jbne _?L149				
@@ -2014,15 +2050,16 @@ _?L153:
 	addq.l #4,sp				
 						
 	tst.l d0				
-	jbne _?L414				
+	jbne _?L415				
 _?L160:						
 						
 	tst.w d4				
-	jbne _?L415				
+	jbne _?L416				
 						
 	pea _cp932rsc_buffer_underrun		
-	pea _?LC34				
-	jbsr _printf				
+	pea _?LC35				
+	move.l -888(a6),a1			
+	jbsr (a1)				
 	addq.l #8,sp				
 	clr.w d3				
 _?L163:						
@@ -2035,13 +2072,13 @@ _?L156:
 	pea 10.w				
 	jbsr (a5)				
 	addq.l #8,sp				
-	move.l d0,d4				
+	move.l d0,-904(a6)			
 						
 	jbeq _?L166				
 						
 	pea 10.w				
 	clr.l -(sp)				
-	move.l d0,-(sp)				
+	move.l -904(a6),-(sp)			
 	jbsr _memset				
 						
 	addq.l #8,sp				
@@ -2051,8 +2088,8 @@ _?L156:
 	jbsr (a5)				
 	addq.l #8,sp				
 						
-	move.l d4,a1				
-	move.l d0,(a1)				
+	move.l -904(a6),a0			
+	move.l d0,(a0)				
 						
 	jbeq _?L166				
 						
@@ -2063,170 +2100,53 @@ _?L156:
 	pea -526(a6)				
 	jbsr _flac_decode_resample		
 	lea (20,sp),sp				
-	move.l d0,d5				
+	move.l d0,d4				
 						
-	jbne _?L416				
+	jbne _?L417				
 						
 	move.l -838(a6),d0			
 						
 	jbne _?L168				
+_?L364:						
 						
 	pea 1.w					
+	move.l -904(a6),a1			
+	move.l (a1),-(sp)			
+	move.l #_himem_free,d4			
 	move.l d4,a0				
-	move.l (a0),-(sp)			
-	lea _himem_free,a0			
-	move.l a0,-896(a6)			
 	jbsr (a0)				
 	addq.l #8,sp				
 						
 	pea 1.w					
-	move.l d4,-(sp)				
-	move.l -896(a6),a0			
-	jbsr (a0)				
+	move.l -904(a6),-(sp)			
+	move.l d4,a1				
+	jbsr (a1)				
 	addq.l #8,sp				
 						
 	tst.w -868(a6)				
-	jbeq _?L417				
-_?L186:						
+	jbeq _?L418				
 						
 	moveq #1,d4				
-_?L418:						
+_?L419:						
 						
 	jbsr _B_KEYSNS				
 						
 	tst.l d0				
 	jbeq _?L149				
-	jbra _?L409				
-_?L414:						
+	jbra _?L410				
+_?L415:						
 						
 	tst.w d4				
-	jbne _?L358				
+	jbne _?L356				
 	clr.w d3				
 	jbra _?L156				
-_?L417:						
-						
-	pea _?LC35				
-	move.l -900(a6),a1			
-	jbsr (a1)				
-	addq.l #4,sp				
-						
-	moveq #1,d4				
-	jbra _?L418				
-_?L412:						
-						
-	clr.l -(sp)				
-	move.l d0,-896(a6)			
-	jbsr _pcm8pp_get_block_counter		
-	addq.l #4,sp				
-						
-	move.l -846(a6),d2			
-	add.l d0,d2				
-						
-	move.l -882(a6),a0			
-	sub.l d2,a0				
-						
-	move.l -896(a6),d1			
-	moveq #6,d0				
-	cmp.l a0,d0				
-	jbge _?L195				
-						
-	move.l _g_init_chain_table_ex,a1	
-_?L196:						
-						
-	cmp.l d1,d2				
-	jble _?L419				
-						
-	move.l 8(a1),a1				
-						
-	tst.l a1				
-	jbeq _?L195				
-						
-	addq.l #1,d1				
-	jbra _?L196				
-_?L188:						
-						
-	pea _?LC36				
-	move.l -900(a6),a1			
-	jbsr (a1)				
-	addq.l #4,sp				
-						
-	move.w -862(a6),d4			
-	jbra _?L189				
-_?L408:						
-						
-	cmp.w #2,d0				
-	jbne _?L131				
-						
-	or.w #7683,d3				
-	move.l d3,-858(a6)			
-						
-	cmp.w #1,d7				
-	jbne _?L139				
-_?L143:						
-						
-	jbsr _pcm8pp_get_frequency_mode		
-						
-	subq.l #2,d0				
-	jbeq _?L140				
-						
-	pea 2.w					
-	jbsr _pcm8pp_set_frequency_mode		
-	addq.l #4,sp				
-_?L140:						
-						
-	move.l _g_init_chain_table_ex,-(sp)	
-						
-	move.l -850(a6),d0			
-	lsl.l #8,d0				
-						
-	move.l d0,-(sp)				
-	pea 1.w					
-	move.l -858(a6),-(sp)			
-	clr.l -(sp)				
-	jbsr _pcm8pp_play_ex_linked_array_chain	
-	lea (20,sp),sp				
-_?L423:						
-						
-	pea _?LC31				
-	jbsr _puts				
-	addq.l #4,sp				
-						
-	lea _ONTIME,a4				
-	jbsr (a4)				
-	move.w #19,a0				
-	add.l d0,a0				
-	move.l a0,-862(a6)			
-	jbra _?L147				
-_?L159:						
-						
-	tst.w d4				
-	jbeq _?L163				
-_?L157:						
-						
-	moveq #1,d3				
-	moveq #1,d4				
-						
-	jbsr _B_KEYSNS				
-						
-	tst.l d0				
-	jbeq _?L149				
-	jbra _?L409				
-_?L358:						
-						
-	clr.w d3				
-						
-	jbsr _B_KEYSNS				
-						
-	tst.l d0				
-	jbeq _?L149				
-	jbra _?L409				
 _?L168:						
 						
-	move.l d4,a0				
-	move.w d0,4(a0)				
+	move.l -904(a6),a1			
+	move.w d0,4(a1)				
 						
-	move.l d6,a1				
-	move.l d4,6(a1)				
+	move.l -878(a6),a0			
+	move.l a1,6(a0)				
 						
 	addq.l #1,-882(a6)			
 						
@@ -2255,40 +2175,51 @@ _?L170:
 	jbhi _?L172				
 _?L171:						
 						
-	addq.l #1,d5				
+	addq.l #1,d4				
 						
 	move.l 6(a0),a0				
 	jbra _?L170				
+_?L418:						
+						
+	pea _?LC36				
+	move.l d6,a0				
+	jbsr (a0)				
+	addq.l #4,sp				
+						
+	moveq #1,d4				
+	jbra _?L419				
 _?L172:						
 						
-	move.w -880(a6),d6			
-	sub.w d5,d6				
+	move.w -880(a6),a1			
+	sub.w d4,a1				
+	move.w a1,-878(a6)			
 						
-	cmp.w -862(a6),d6			
+	move.w a1,d1				
+	cmp.w -862(a6),d1			
 	jblt _?L174				
 						
 	tst.w -868(a6)				
 	jbeq _?L420				
-_?L176:						
+_?L177:						
 						
 	clr.l -(sp)				
-	move.l a0,-896(a6)			
+	move.l a0,-900(a6)			
 	jbsr _pcm8a_get_data_length		
 	addq.l #4,sp				
 						
-	move.l -896(a6),a0			
+	move.l -900(a6),a0			
 	tst.l d0				
-	jbne _?L180				
+	jbne _?L179				
 						
 	move.l -882(a6),d0			
-	sub.l d5,d0				
+	sub.l d4,d0				
 						
 	moveq #6,d1				
 	cmp.l d0,d1				
-	jbge _?L180				
+	jbge _?L179				
 						
 	tst.l a0				
-	jbeq _?L180				
+	jbeq _?L179				
 						
 	move.l a0,-(sp)				
 	move.l -842(a6),-(sp)			
@@ -2296,25 +2227,156 @@ _?L176:
 	jbsr _pcm8a_play_linked_array_chain	
 	lea (12,sp),sp				
 						
-	move.w d6,-862(a6)			
-_?L180:						
-	move.l d4,d6				
+	move.w -878(a6),-862(a6)		
+_?L179:						
+	move.l -904(a6),-878(a6)		
 	clr.w d4				
 						
 	jbsr _B_KEYSNS				
 						
 	tst.l d0				
 	jbeq _?L149				
-	jbra _?L409				
+	jbra _?L410				
+_?L413:						
+						
+	clr.l -(sp)				
+	move.l d0,-900(a6)			
+	jbsr _pcm8pp_get_block_counter		
+	addq.l #4,sp				
+						
+	move.l -846(a6),a1			
+	add.l d0,a1				
+						
+	move.l -882(a6),d0			
+	sub.l a1,d0				
+						
+	move.l -900(a6),d1			
+	moveq #6,d2				
+	cmp.l d0,d2				
+	jbge _?L193				
+						
+	move.l _g_init_chain_table_ex,a0	
+_?L194:						
+						
+	cmp.l d1,a1				
+	jble _?L421				
+						
+	move.l 8(a0),a0				
+						
+	tst.l a0				
+	jbeq _?L193				
+						
+	addq.l #1,d1				
+	jbra _?L194				
 _?L420:						
 						
-	pea _?LC36				
-	move.l a0,-896(a6)			
-	move.l -900(a6),a1			
+	pea _?LC37				
+	move.l a0,-900(a6)			
+	move.l d6,a1				
 	jbsr (a1)				
 	addq.l #4,sp				
-	move.l -896(a6),a0			
-	jbra _?L176				
+	move.l -900(a6),a0			
+	jbra _?L177				
+_?L412:						
+						
+	pea _?LC37				
+	move.l d6,a1				
+	jbsr (a1)				
+	addq.l #4,sp				
+						
+	move.w -862(a6),d4			
+	jbra _?L189				
+_?L409:						
+						
+	jbsr _pcm8pp_get_frequency_mode		
+						
+	subq.l #2,d0				
+	jbne _?L144				
+_?L140:						
+						
+	move.l _g_init_chain_table_ex,-(sp)	
+						
+	move.l -850(a6),d0			
+	lsl.l #8,d0				
+						
+	move.l d0,-(sp)				
+	pea 1.w					
+	move.l -858(a6),-(sp)			
+	clr.l -(sp)				
+	jbsr _pcm8pp_play_ex_linked_array_chain	
+	lea (20,sp),sp				
+_?L422:						
+						
+	pea _?LC31				
+	move.l -888(a6),a0			
+	jbsr (a0)				
+						
+	move.l #_?LC32,(sp)			
+	jbsr _puts				
+	addq.l #4,sp				
+						
+	lea _ONTIME,a4				
+	jbsr (a4)				
+	move.w #19,a1				
+	add.l d0,a1				
+	move.l a1,-862(a6)			
+	jbra _?L147				
+_?L408:						
+						
+	cmp.w #2,d0				
+	jbne _?L131				
+						
+	or.w #7683,d3				
+	move.l d3,-858(a6)			
+						
+	cmp.w #1,d7				
+	jbne _?L139				
+						
+	jbsr _pcm8pp_get_frequency_mode		
+						
+	subq.l #2,d0				
+	jbeq _?L140				
+_?L144:						
+						
+	pea 2.w					
+	jbsr _pcm8pp_set_frequency_mode		
+	addq.l #4,sp				
+						
+	move.l _g_init_chain_table_ex,-(sp)	
+						
+	move.l -850(a6),d0			
+	lsl.l #8,d0				
+						
+	move.l d0,-(sp)				
+	pea 1.w					
+	move.l -858(a6),-(sp)			
+	clr.l -(sp)				
+	jbsr _pcm8pp_play_ex_linked_array_chain	
+	lea (20,sp),sp				
+	jbra _?L422				
+_?L159:						
+						
+	tst.w d4				
+	jbeq _?L163				
+_?L157:						
+						
+	moveq #1,d3				
+	moveq #1,d4				
+						
+	jbsr _B_KEYSNS				
+						
+	tst.l d0				
+	jbeq _?L149				
+	jbra _?L410				
+_?L356:						
+						
+	clr.w d3				
+						
+	jbsr _B_KEYSNS				
+						
+	tst.l d0				
+	jbeq _?L149				
+	jbra _?L410				
 _?L151:						
 						
 	tst.w d7				
@@ -2330,21 +2392,21 @@ _?L151:
 _?L174:						
 						
 	tst.w -868(a6)				
-	jbeq _?L178				
+	jbeq _?L176				
 						
-	move.w d6,-862(a6)			
-	jbra _?L176				
-_?L178:						
+	move.w -878(a6),-862(a6)		
+	jbra _?L177				
+_?L176:						
 						
-	pea _?LC37				
-	move.l a0,-896(a6)			
-	move.l -900(a6),a1			
+	pea _?LC38				
+	move.l a0,-900(a6)			
+	move.l d6,a1				
 	jbsr (a1)				
 	addq.l #4,sp				
-	move.l -896(a6),a0			
+	move.l -900(a6),a0			
 						
-	move.w d6,-862(a6)			
-	jbra _?L176				
+	move.w -878(a6),-862(a6)		
+	jbra _?L177				
 _?L152:						
 						
 	jbsr _pcm8pp_resume			
@@ -2358,13 +2420,13 @@ _?L155:
 						
 	move.w d7,d3				
 	jbra _?L158				
-_?L187:						
+_?L186:						
 						
 	tst.w -868(a6)				
 	jbne _?L189				
 						
-	pea _?LC37				
-	move.l -900(a6),a0			
+	pea _?LC38				
+	move.l d6,a0				
 	jbsr (a0)				
 	addq.l #4,sp				
 						
@@ -2373,34 +2435,8 @@ _?L187:
 	addq.l #4,sp				
 						
 	tst.l d0				
-	jbne _?L195				
-	jbra _?L412				
-_?L411:						
-						
-	pea 1.w					
-	move.l d5,a1				
-	move.l (a1),-(sp)			
-	lea _himem_free,a0			
-	move.l a0,-896(a6)			
-	jbsr (a0)				
-	addq.l #8,sp				
-						
-	pea 1.w					
-	move.l d5,-(sp)				
-	move.l -896(a6),a0			
-	jbsr (a0)				
-	addq.l #8,sp				
-						
-	tst.w -868(a6)				
-	jbne _?L186				
-						
-	pea _?LC35				
-	move.l -900(a6),a0			
-	jbsr (a0)				
-	addq.l #4,sp				
-						
-	moveq #1,d4				
-	jbra _?L418				
+	jbne _?L193				
+	jbra _?L413				
 _?L73:						
 						
 	pea _?LC0				
@@ -2413,42 +2449,43 @@ _?L73:
 						
 	jbsr _C_CUROFF				
 	clr.w d3				
-	move.w #1,-872(a6)			
+	move.w #1,-878(a6)			
 	clr.l -882(a6)				
-	moveq #1,d1				
-	move.l d1,-892(a6)			
+	moveq #1,d2				
+	move.l d2,-896(a6)			
 						
 	move.w -884(a6),a0			
 	move.l a0,-854(a6)			
+						
 	move.l d7,-866(a6)			
 	move.w d3,d7				
-	jbra _?L213				
-_?L378:						
+	jbra _?L211				
+_?L377:						
 						
 	jbsr _show_help_message			
 						
 	moveq #1,d1				
-	move.l d1,-892(a6)			
+	move.l d1,-896(a6)			
 						
 	jbsr _C_CURON				
 						
 	move.l _g_funckey_mode,d0		
 						
-	jbmi _?L215				
-	jbra _?L376				
-_?L413:						
+	jbmi _?L213				
+	jbra _?L375				
+_?L414:						
 						
-	pea _?LC32				
-	move.l -900(a6),a1			
-	jbsr (a1)				
+	pea _?LC33				
+	move.l d6,a0				
+	jbsr (a0)				
 	addq.l #4,sp				
 						
 	clr.l d3				
 						
-	clr.w -872(a6)				
+	clr.w -878(a6)				
 						
 	moveq #1,d1				
-	move.l d1,-892(a6)			
+	move.l d1,-896(a6)			
 						
 	tst.w d7				
 	jbne _?L119				
@@ -2463,15 +2500,15 @@ _?L113:
 						
 	clr.l d3				
 						
-	clr.w -872(a6)				
+	clr.w -878(a6)				
 	lea _ONTIME,a4				
-	move.l #_B_PRINT,-900(a6)		
-_?L424:						
+	move.l #_B_PRINT,d6			
+_?L427:						
 						
 	jbsr _pcm8pp_pause			
 						
 	jbsr _pcm8pp_stop			
-	jbra _?L198				
+	jbra _?L196				
 _?L403:						
 						
 	pea _?LC0				
@@ -2484,23 +2521,24 @@ _?L403:
 						
 	jbsr _C_CUROFF				
 	moveq #1,d3				
-	move.w #1,-872(a6)			
+	move.w #1,-878(a6)			
 	clr.l -882(a6)				
-	moveq #1,d1				
-	move.l d1,-892(a6)			
+	moveq #1,d2				
+	move.l d2,-896(a6)			
 						
 	move.w -884(a6),a0			
 	move.l a0,-854(a6)			
+						
 	move.l d7,-866(a6)			
 	move.w d3,d7				
-	jbra _?L213				
+	jbra _?L211				
 _?L404:						
 						
 	cmp.w #1,d0				
-	jbeq _?L421				
+	jbeq _?L423				
 						
 	cmp.w #2,d0				
-	jbeq _?L422				
+	jbeq _?L424				
 _?L131:						
 						
 	or.w #7427,d3				
@@ -2530,8 +2568,8 @@ _?L142:
 	clr.l -(sp)				
 	jbsr _pcm8pp_play_ex_linked_array_chain	
 	lea (20,sp),sp				
-	jbra _?L423				
-_?L422:						
+	jbra _?L422				
+_?L424:						
 						
 	or.w #6659,d3				
 	move.l d3,-858(a6)			
@@ -2540,14 +2578,18 @@ _?L422:
 	jbeq _?L140				
 						
 	pea _?LC31				
+	move.l -888(a6),a0			
+	jbsr (a0)				
+						
+	move.l #_?LC32,(sp)			
 	jbsr _puts				
 	addq.l #4,sp				
 						
 	lea _ONTIME,a4				
 	jbsr (a4)				
-	move.w #19,a0				
-	add.l d0,a0				
-	move.l a0,-862(a6)			
+	move.w #19,a1				
+	add.l d0,a1				
+	move.l a1,-862(a6)			
 	jbra _?L147				
 _?L69:						
 						
@@ -2557,8 +2599,63 @@ _?L69:
 	addq.l #8,sp				
 						
 	moveq #1,d1				
-	move.l d1,-892(a6)			
+	move.l d1,-896(a6)			
 	jbra _?L51				
+_?L405:						
+						
+	cmp.w #1,d0				
+	jbne _?L425				
+						
+	or.w #2819,d3				
+	move.l d3,-858(a6)			
+						
+	cmp.w #1,d7				
+	jbeq _?L140				
+						
+	pea _?LC31				
+	move.l -888(a6),a0			
+	jbsr (a0)				
+						
+	move.l #_?LC32,(sp)			
+	jbsr _puts				
+	addq.l #4,sp				
+						
+	lea _ONTIME,a4				
+	jbsr (a4)				
+	move.w #19,a1				
+	add.l d0,a1				
+	move.l a1,-862(a6)			
+	jbra _?L147				
+_?L166:						
+						
+	pea _cp932rsc_himem_shortage		
+	pea -782(a6)				
+	jbsr _strcpy				
+	addq.l #8,sp				
+						
+	clr.l d3				
+						
+	clr.w -878(a6)				
+_?L429:						
+						
+	jbsr _pcm8a_pause			
+						
+	jbsr _pcm8a_stop			
+	jbra _?L426				
+_?L399:						
+						
+	move.l -862(a6),a3			
+	pea _cp932rsc_flac_decode_error		
+	pea -782(a6)				
+	jbsr _strcpy				
+	addq.l #8,sp				
+						
+	clr.w -878(a6)				
+						
+	clr.l d3				
+	lea _ONTIME,a4				
+	move.l #_B_PRINT,d6			
+	jbra _?L110				
 _?L396:						
 						
 	move.l -862(a6),a3			
@@ -2569,78 +2666,27 @@ _?L396:
 						
 	clr.l d3				
 						
-	clr.w -872(a6)				
+	clr.w -878(a6)				
 	lea _ONTIME,a4				
-	move.l #_B_PRINT,-900(a6)		
-	jbra _?L424				
-_?L166:						
-						
-	pea _cp932rsc_himem_shortage		
-	pea -782(a6)				
-	jbsr _strcpy				
-	addq.l #8,sp				
-						
-	clr.l d3				
-						
-	clr.w -872(a6)				
-_?L428:						
-						
-	jbsr _pcm8a_pause			
-						
-	jbsr _pcm8a_stop			
-	jbra _?L425				
-_?L399:						
-						
-	move.l -862(a6),a3			
-	pea _cp932rsc_flac_decode_error		
-	pea -782(a6)				
-	jbsr _strcpy				
-	addq.l #8,sp				
-						
-	clr.w -872(a6)				
-						
-	clr.l d3				
-	lea _ONTIME,a4				
-	move.l #_B_PRINT,-900(a6)		
-	jbra _?L110				
-_?L405:						
-						
-	cmp.w #1,d0				
-	jbne _?L426				
-						
-	or.w #2819,d3				
-	move.l d3,-858(a6)			
-						
-	cmp.w #1,d7				
-	jbeq _?L140				
-						
-	pea _?LC31				
-	jbsr _puts				
-	addq.l #4,sp				
-						
-	lea _ONTIME,a4				
-	jbsr (a4)				
-	move.w #19,a0				
-	add.l d0,a0				
-	move.l a0,-862(a6)			
-	jbra _?L147				
+	move.l #_B_PRINT,d6			
+	jbra _?L427				
 _?L397:						
 						
-	move.l a3,d5				
+	move.l a3,d6				
 	move.l -862(a6),a3			
 	pea 1.w					
-	move.l d5,a1				
+	move.l d6,a1				
 	move.l (a1),-(sp)			
 	lea _himem_free,a4			
 	jbsr (a4)				
 	addq.l #8,sp				
 						
 	pea 1.w					
-	move.l d5,-(sp)				
+	move.l d6,-(sp)				
 	jbsr (a4)				
 	addq.l #8,sp				
 						
-	move.w -876(a6),d3			
+	move.w -872(a6),d3			
 	swap d3					
 	clr.w d3				
 						
@@ -2650,7 +2696,7 @@ _?L397:
 						
 	move.w d7,d4				
 	jbra _?L116				
-_?L426:						
+_?L425:						
 						
 	cmp.w #2,d0				
 	jbne _?L131				
@@ -2662,16 +2708,20 @@ _?L426:
 	jbeq _?L140				
 						
 	pea _?LC31				
+	move.l -888(a6),a0			
+	jbsr (a0)				
+						
+	move.l #_?LC32,(sp)			
 	jbsr _puts				
 	addq.l #4,sp				
 						
 	lea _ONTIME,a4				
 	jbsr (a4)				
-	move.w #19,a0				
-	add.l d0,a0				
-	move.l a0,-862(a6)			
+	move.w #19,a1				
+	add.l d0,a1				
+	move.l a1,-862(a6)			
 	jbra _?L147				
-_?L421:						
+_?L423:						
 						
 	or.w #2563,d3				
 	move.l d3,-858(a6)			
@@ -2680,19 +2730,23 @@ _?L421:
 	jbeq _?L140				
 						
 	pea _?LC31				
+	move.l -888(a6),a0			
+	jbsr (a0)				
+						
+	move.l #_?LC32,(sp)			
 	jbsr _puts				
 	addq.l #4,sp				
 						
 	lea _ONTIME,a4				
 	jbsr (a4)				
-	move.w #19,a0				
-	add.l d0,a0				
-	move.l a0,-862(a6)			
+	move.w #19,a1				
+	add.l d0,a1				
+	move.l a1,-862(a6)			
 	jbra _?L147				
 _?L406:						
 						
 	cmp.w #1,d0				
-	jbne _?L427				
+	jbne _?L428				
 						
 	or.w #3075,d3				
 	move.l d3,-858(a6)			
@@ -2701,14 +2755,18 @@ _?L406:
 	jbeq _?L140				
 						
 	pea _?LC31				
+	move.l -888(a6),a0			
+	jbsr (a0)				
+						
+	move.l #_?LC32,(sp)			
 	jbsr _puts				
 	addq.l #4,sp				
 						
 	lea _ONTIME,a4				
 	jbsr (a4)				
-	move.w #19,a0				
-	add.l d0,a0				
-	move.l a0,-862(a6)			
+	move.w #19,a1				
+	add.l d0,a1				
+	move.l a1,-862(a6)			
 	jbra _?L147				
 _?L407:						
 						
@@ -2722,16 +2780,20 @@ _?L407:
 	jbeq _?L142				
 						
 	pea _?LC31				
+	move.l -888(a6),a0			
+	jbsr (a0)				
+						
+	move.l #_?LC32,(sp)			
 	jbsr _puts				
 	addq.l #4,sp				
 						
 	lea _ONTIME,a4				
 	jbsr (a4)				
-	move.w #19,a0				
-	add.l d0,a0				
-	move.l a0,-862(a6)			
+	move.w #19,a1				
+	add.l d0,a1				
+	move.l a1,-862(a6)			
 	jbra _?L147				
-_?L427:						
+_?L428:						
 						
 	cmp.w #2,d0				
 	jbne _?L131				
@@ -2743,16 +2805,20 @@ _?L427:
 	jbeq _?L140				
 						
 	pea _?LC31				
+	move.l -888(a6),a0			
+	jbsr (a0)				
+						
+	move.l #_?LC32,(sp)			
 	jbsr _puts				
 	addq.l #4,sp				
 						
 	lea _ONTIME,a4				
 	jbsr (a4)				
-	move.w #19,a0				
-	add.l d0,a0				
-	move.l a0,-862(a6)			
+	move.w #19,a1				
+	add.l d0,a1				
+	move.l a1,-862(a6)			
 	jbra _?L147				
-_?L416:						
+_?L417:						
 						
 	pea _cp932rsc_flac_decode_error		
 	pea -782(a6)				
@@ -2761,9 +2827,9 @@ _?L416:
 						
 	clr.l d3				
 						
-	clr.w -872(a6)				
-	jbra _?L428				
-_?L183:						
+	clr.w -878(a6)				
+	jbra _?L429				
+_?L182:						
 						
 	pea _cp932rsc_himem_shortage		
 	pea -782(a6)				
@@ -2772,35 +2838,35 @@ _?L183:
 						
 	clr.l d3				
 						
-	clr.w -872(a6)				
-_?L430:						
+	clr.w -878(a6)				
+_?L431:						
 						
 	jbsr _pcm8pp_pause			
 						
 	jbsr _pcm8pp_stop			
-	jbra _?L198				
-_?L415:						
+	jbra _?L196				
+_?L416:						
 						
-	pea _?LC33				
-	move.l -900(a6),a0			
+	pea _?LC34				
+	move.l d6,a0				
 	jbsr (a0)				
 	addq.l #4,sp				
 						
-	clr.l -892(a6)				
+	clr.l -896(a6)				
 						
 	clr.l d3				
 						
-	clr.w -872(a6)				
+	clr.w -878(a6)				
 						
 	tst.w d7				
 	jbne _?L119				
 	jbra _?L110				
-_?L419:						
+_?L421:						
 						
-	tst.l a1				
-	jbeq _?L195				
+	tst.l a0				
+	jbeq _?L193				
 						
-	move.l a1,-(sp)				
+	move.l a0,-(sp)				
 						
 	move.l -850(a6),d0			
 	lsl.l #8,d0				
@@ -2809,7 +2875,7 @@ _?L419:
 	pea 1.w					
 	move.l -858(a6),-(sp)			
 	clr.l -(sp)				
-	move.l d2,-896(a6)			
+	move.l a1,-900(a6)			
 	jbsr _pcm8pp_play_ex_linked_array_chain	
 						
 	lea (16,sp),sp				
@@ -2817,18 +2883,17 @@ _?L419:
 	jbsr _pcm8pp_get_block_counter		
 	addq.l #4,sp				
 						
-	move.l -896(a6),d2			
-	move.w -872(a6),d1			
-	sub.w d2,d1				
-	move.w d1,d4				
+	move.l -900(a6),a1			
+	sub.w a1,d5				
+	move.w d5,d4				
 	sub.w d0,d4				
 						
-	move.l d2,-846(a6)			
+	move.l a1,-846(a6)			
 	move.w d4,-862(a6)			
-	move.l d5,-872(a6)			
+	move.l -904(a6),d5			
 	clr.w d4				
-	jbra _?L429				
-_?L410:						
+	jbra _?L430				
+_?L411:						
 						
 	pea _cp932rsc_flac_decode_error		
 	pea -782(a6)				
@@ -2837,8 +2902,8 @@ _?L410:
 						
 	clr.l d3				
 						
-	clr.w -872(a6)				
-	jbra _?L430				
+	clr.w -878(a6)				
+	jbra _?L431				
 						
 						
 	.align 2	* workaround for 3 args .comm directive.

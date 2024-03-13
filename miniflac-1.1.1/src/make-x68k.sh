@@ -15,7 +15,7 @@ INCLUDE_FLAGS="-I${XDEV68K_DIR}/include/xc -I${XDEV68K_DIR}/include/xdev68k"
 COMMON_FLAGS="-m68030 -O3 ${INCLUDE_FLAGS} -z-stack=32768"
 CFLAGS="${COMMON_FLAGS} -Wno-builtin-declaration-mismatch -fcall-used-d2 -fcall-used-a2 \
     -fexec-charset=cp932 -fverbose-asm -fno-defer-pop -DFPM_DEFAULT -D_TIME_T_DECLARED -D_CLOCK_T_DECLARED -Dwint_t=int \
-		-DXDEV68K"
+		-DMINIFLAC_IMPLEMENTATION -DXDEV68K"
 
 LIBS="${XDEV68K_DIR}/lib/xc/CLIB.L ${XDEV68K_DIR}/lib/xc/DOSLIB.L ${XDEV68K_DIR}/lib/xc/IOCSLIB.L ${XDEV68K_DIR}/lib/xc/FLOATFNC.L ${XDEV68K_DIR}/lib/m68k_elf/m68000/libgcc.a"
 
@@ -41,10 +41,15 @@ function do_compile() {
   return 0
 }
 
-function build_libmad() {
-  do_compile . "application bitreader cuesheet debug flac frame frameheader metadata metadataheader \
-  mflac ogg oggheader padding picture residual seektable streaminfo streammarker subframe_constant \
-  subframe_fixed subframe_lpc subframe_verbatim subframe subframeheader unpack vorbiscomment"
+function build_miniflac() {
+  cat application.c bitreader.c cuesheet.c frame.c frameheader.c metadata.c metadataheader.c \
+    ogg.c oggheader.c padding.c picture.c residual.c seektable.c streaminfo.c streammarker.c \
+    subframe_constant.c subframe_fixed.c subframe_lpc.c subframe_verbatim.c subframe.c \
+    subframeheader.c unpack.c vorbiscomment.c flac.c > flacall.c
+#  do_compile . "application bitreader cuesheet flac frame frameheader metadata metadataheader \
+#  ogg oggheader padding picture residual seektable streaminfo streammarker subframe_constant \
+#  subframe_fixed subframe_lpc subframe_verbatim subframe subframeheader unpack vorbiscomment"
+  do_compile . "flacall"
 }
 
-build_libmad
+build_miniflac

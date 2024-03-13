@@ -132,7 +132,7 @@ exit:
 //  show help message
 //
 static void show_help_message() {
-  printf("HFLAP.X - High Memory FLAC player for X680x0 + Mercury-UNIT version " VERSION " by tantan\n");
+  printf("HFLAP.X - High Memory FLAC player for X680x0 version " VERSION " by tantan\n");
   printf("usage: hflap [options] <input-file.fla>\n");
   printf("options:\n");
   printf("     -l[n] ... loop count (none:endless, default:1)\n");
@@ -257,7 +257,7 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
 
   // credit
   if (pic_brightness == 0) {
-    printf("HFLAP.X - High Memory FLAC player for X680x0 + Mercury-UNIT version " VERSION " by tantan\n");
+    printf("HFLAP.X - High Memory FLAC player for X680x0 version " VERSION " by tantan\n");
   }
 
   // reset PCM8A/PCM8PP
@@ -603,7 +603,9 @@ try:
 
   }
 
+  printf("\r\x1b[0K\x1bM");
   printf("\nNow playing ... push [ESC]/[Q] key to quit. [SPACE] to pause.\x1b[0K\n");
+
   int16_t paused = 0;
 
   // dummy wait to make sure DMAC start (200 msec)

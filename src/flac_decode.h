@@ -7,7 +7,8 @@
 #include <stddef.h>
 
 //#define MINIFLAC_IMPLEMENTATION
-#include "miniflac.h"
+//#include "miniflac.h"
+#include "src/flac.h"
 
 typedef miniflac_t MINIFLAC;
 
