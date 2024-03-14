@@ -64,35 +64,6 @@ INTERMEDIATE_DIR = _build
 OBJS = $(addprefix $(INTERMEDIATE_DIR)/,$(patsubst %.c,%.o,$(C_SRCS))) \
 	$(addprefix $(INTERMEDIATE_DIR)/,$(patsubst %.s,%.o,$(ASM_SRCS))) 
 
-# オブジェクトファイル (miniflac)
-OBJS2 = ${MINIFLAC_DIR}/src/_build/flacall.o
-OBJS2a = ${MINIFLAC_DIR}/src/_build/*.o
-OBJS2b = \
-  ${MINIFLAC_DIR}/src/_build/application.o \
-  ${MINIFLAC_DIR}/src/_build/bitreader.o \
-  ${MINIFLAC_DIR}/src/_build/cuesheet.o \
-  ${MINIFLAC_DIR}/src/_build/flac.o \
-  ${MINIFLAC_DIR}/src/_build/frame.o \
-  ${MINIFLAC_DIR}/src/_build/frameheader.o \
-  ${MINIFLAC_DIR}/src/_build/metadata.o \
-  ${MINIFLAC_DIR}/src/_build/metadataheader.o \
-  ${MINIFLAC_DIR}/src/_build/ogg.o \
-  ${MINIFLAC_DIR}/src/_build/oggheader.o \
-  ${MINIFLAC_DIR}/src/_build/padding.o \
-  ${MINIFLAC_DIR}/src/_build/picture.o \
-  ${MINIFLAC_DIR}/src/_build/residual.o \
-  ${MINIFLAC_DIR}/src/_build/seektable.o \
-  ${MINIFLAC_DIR}/src/_build/subframe.o \
-  ${MINIFLAC_DIR}/src/_build/subframe_constant.o \
-  ${MINIFLAC_DIR}/src/_build/subframe_verbatim.o \
-  ${MINIFLAC_DIR}/src/_build/subframe_fixed.o \
-  ${MINIFLAC_DIR}/src/_build/subframe_lpc.o \
-  ${MINIFLAC_DIR}/src/_build/subframeheader.o \
-  ${MINIFLAC_DIR}/src/_build/streaminfo.o \
-  ${MINIFLAC_DIR}/src/_build/streammarker.o \
-  ${MINIFLAC_DIR}/src/_build/vorbiscomment.o \
-  ${MINIFLAC_DIR}/src/_build/unpack.o
-
 # HLK に入力するリンクリスト
 HLK_LINK_LIST = $(INTERMEDIATE_DIR)/_lk_list.tmp
 
@@ -111,7 +82,7 @@ clean :
 ${INTERMEDIATE_DIR}/$(TARGET_FILE) : $(OBJS)
 	mkdir -p $(INTERMEDIATE_DIR)
 	rm -f $(HLK_LINK_LIST)
-	@for FILENAME in $(OBJS) $(OBJS2); do\
+	@for FILENAME in $(OBJS); do\
 		echo $$FILENAME >> $(HLK_LINK_LIST); \
         done
 	@for FILENAME in $(LIBS); do\

@@ -228,11 +228,11 @@ int32_t flac_decode_full(FLAC_DECODE_HANDLE* decode, int16_t* decode_buffer, siz
 
     }
 
-    if (miniflac_sync(decoder,
-                      &(decode->flac_data[decode->flac_data_pos]),
-                      decode->flac_data_len - decode->flac_data_pos,
-                      &used_bytes) != MINIFLAC_OK) break;
-    decode->flac_data_pos += used_bytes;
+//    if (miniflac_sync(decoder,
+//                      &(decode->flac_data[decode->flac_data_pos]),
+//                      decode->flac_data_len - decode->flac_data_pos,
+//                      &used_bytes) != MINIFLAC_OK) break;
+//    decode->flac_data_pos += used_bytes;
   }
 
   // success
@@ -322,11 +322,11 @@ int32_t flac_decode_resample(FLAC_DECODE_HANDLE* decode, int16_t* decode_buffer,
 
     }
 
-    if (miniflac_sync(decoder,
-                      &(decode->flac_data[decode->flac_data_pos]),
-                      decode->flac_data_len - decode->flac_data_pos,
-                      &used_bytes) != MINIFLAC_OK) break;
-    decode->flac_data_pos += used_bytes;
+//    if (miniflac_sync(decoder,
+//                      &(decode->flac_data[decode->flac_data_pos]),
+//                      decode->flac_data_len - decode->flac_data_pos,
+//                      &used_bytes) != MINIFLAC_OK) break;
+//    decode->flac_data_pos += used_bytes;
   }
 
   // success

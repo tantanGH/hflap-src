@@ -381,27 +381,26 @@ _?L39:
 						
 _flac_decode_full:				
 	subq.l #4,sp				
-	movem.l d3/d4/d5/d6/a3/a4/a5/a6,-(sp)	
-	move.l 40(sp),a3			
+	movem.l d3/d4/d5/d6/a3/a4/a5,-(sp)	
+	move.l 36(sp),a3			
+	move.l 40(sp),d4			
 	move.l 44(sp),d6			
-	move.l 48(sp),d5			
 						
-	clr.l 32(sp)				
+	clr.l 28(sp)				
 						
-	lea (56,a3),a4				
+	lea (56,a3),a5				
 						
-	clr.l d3				
+	clr.l d5				
 						
-	moveq #32,d4				
-	add.l sp,d4				
-	lea _miniflac_decode,a6			
-						
-	lea _miniflac_sync,a5			
+	moveq #28,d3				
+	add.l sp,d3				
+	lea _miniflac_decode,a4			
+_?L49:						
 						
 	move.l 52(a3),d1			
 						
-	jbeq _?L49				
-_?L74:						
+	jbeq _?L50				
+_?L73:						
 						
 	clr.l 52(a3)				
 						
@@ -410,12 +409,12 @@ _?L74:
 						
 	muls.l d1,d0				
 						
-	add.l d3,d0				
+	add.l d5,d0				
 	add.l d0,d0				
 						
-	cmp.l d0,d5				
+	cmp.l d0,d6				
 	jbcs _?L71				
-_?L52:						
+_?L53:						
 						
 	move.b 293(a3),d0			
 						
@@ -423,94 +422,22 @@ _?L52:
 	jbeq _?L72				
 						
 	cmp.b #24,d0				
-	jbeq _?L73				
-_?L55:						
-						
-	move.l 8(a3),d0				
-						
-	move.l d4,-(sp)				
-	move.l 4(a3),d1				
-	sub.l d0,d1				
-	move.l d1,-(sp)				
-	add.l (a3),d0				
-	move.l d0,-(sp)				
-	move.l a4,-(sp)				
-	jbsr (a5)				
-	lea (16,sp),sp				
-						
-	subq.l #1,d0				
-	jbne _?L53				
-						
-	move.l 32(sp),d0			
-	add.l d0,8(a3)				
-						
-	move.l 52(a3),d1			
-						
-	jbne _?L74				
-_?L49:						
-						
-	move.l 8(a3),d0				
-						
-	move.l 48(a3),-(sp)			
-	move.l d4,-(sp)				
-	move.l 4(a3),d1				
-	sub.l d0,d1				
-	move.l d1,-(sp)				
-	add.l (a3),d0				
-	move.l d0,-(sp)				
-	move.l a4,-(sp)				
-	jbsr (a6)				
-	lea (20,sp),sp				
-						
-	subq.l #1,d0				
-	jbne _?L53				
-						
-	move.l 32(sp),d0			
-	add.l d0,8(a3)				
-						
-	clr.l d1				
-	move.w 282(a3),d1			
-						
-	clr.l d0				
-	move.b 292(a3),d0			
-						
-	muls.l d1,d0				
-						
-	add.l d3,d0				
-	add.l d0,d0				
-						
-	cmp.l d0,d5				
-	jbcc _?L52				
-_?L71:						
-						
-	move.l d1,52(a3)			
-_?L53:						
-						
-	add.l d3,d3				
-						
-	move.l 52(sp),a0			
-	move.l d3,(a0)				
-						
-	clr.l d0				
-	movem.l (sp)+,d3/d4/d5/d6/a3/a4/a5/a6	
-	addq.l #4,sp				
-	rts					
-_?L73:						
+	jbne _?L49				
 						
 	tst.l d1				
-	jbeq _?L55				
+	jbeq _?L49				
 						
 	move.l 48(a3),a2			
 	move.l 4(a2),a1				
-	move.l d3,d0				
+	move.l d5,d0				
 	add.l d0,d0				
-	move.l d6,a0				
+	move.l d4,a0				
 	add.l d0,a0				
 	move.l (a2),a2				
 	move.l d1,d2				
 	lsl.l #2,d2				
 	add.l a1,d2				
-_?L57:						
+_?L58:						
 						
 	move.l (a1)+,d0				
 						
@@ -526,28 +453,79 @@ _?L57:
 						
 	addq.l #4,a0				
 	cmp.l d2,a1				
-	jbne _?L57				
+	jbne _?L58				
 _?L67:						
 						
 	add.l d1,d1				
-	add.l d1,d3				
-	jbra _?L55				
+	add.l d1,d5				
+						
+	move.l 52(a3),d1			
+						
+	jbne _?L73				
+_?L50:						
+						
+	move.l 8(a3),d0				
+						
+	move.l 48(a3),-(sp)			
+	move.l d3,-(sp)				
+	move.l 4(a3),d1				
+	sub.l d0,d1				
+	move.l d1,-(sp)				
+	add.l (a3),d0				
+	move.l d0,-(sp)				
+	move.l a5,-(sp)				
+	jbsr (a4)				
+	lea (20,sp),sp				
+						
+	subq.l #1,d0				
+	jbne _?L54				
+						
+	move.l 28(sp),d0			
+	add.l d0,8(a3)				
+						
+	clr.l d1				
+	move.w 282(a3),d1			
+						
+	clr.l d0				
+	move.b 292(a3),d0			
+						
+	muls.l d1,d0				
+						
+	add.l d5,d0				
+	add.l d0,d0				
+						
+	cmp.l d0,d6				
+	jbcc _?L53				
+_?L71:						
+						
+	move.l d1,52(a3)			
+_?L54:						
+						
+	add.l d5,d5				
+						
+	move.l 48(sp),a0			
+	move.l d5,(a0)				
+						
+	clr.l d0				
+	movem.l (sp)+,d3/d4/d5/d6/a3/a4/a5	
+	addq.l #4,sp				
+	rts					
 _?L72:						
 						
 	tst.l d1				
-	jbeq _?L55				
+	jbeq _?L49				
 						
 	move.l 48(a3),a2			
 	move.l 4(a2),a1				
-	move.l d3,d0				
+	move.l d5,d0				
 	add.l d0,d0				
-	move.l d6,a0				
+	move.l d4,a0				
 	add.l d0,a0				
 	move.l (a2),a2				
 	move.l d1,d2				
 	lsl.l #2,d2				
 	add.l a1,d2				
-_?L56:						
+_?L57:						
 						
 	move.l (a1)+,d0				
 						
@@ -571,7 +549,7 @@ _?L56:
 						
 	addq.l #4,a0				
 	cmp.l d2,a1				
-	jbne _?L56				
+	jbne _?L57				
 	jbra _?L67				
 						
 	.align	2				
@@ -586,21 +564,22 @@ _flac_decode_resample:
 						
 	clr.l 36(sp)				
 						
-	lea (56,a3),a6				
+	moveq #56,d6				
+	add.l a3,d6				
 						
 	clr.l d3				
 						
-	move.w 58(sp),a4			
+	move.w 58(sp),a6			
 						
 	moveq #36,d4				
 	add.l sp,d4				
-						
-	move.l #_miniflac_sync,d6		
+	lea _miniflac_decode,a4			
+_?L75:						
 						
 	move.l 52(a3),d0			
 						
 	jbeq _?L76				
-_?L104:						
+_?L101:						
 						
 	clr.l 52(a3)				
 						
@@ -618,32 +597,54 @@ _?L104:
 _?L79:						
 						
 	cmp.b #24,d1				
-	jbeq _?L103				
-_?L83:						
+	jbne _?L75				
 						
-	move.l 8(a3),d0				
+	tst.l d0				
+	jbeq _?L75				
+	move.l 44(a3),d1			
 						
-	move.l d4,-(sp)				
-	move.l 4(a3),d1				
-	sub.l d0,d1				
-	move.l d1,-(sp)				
-	add.l (a3),d0				
-	move.l d0,-(sp)				
-	move.l a6,-(sp)				
-	move.l d6,a0				
-	jbsr (a0)				
-	lea (16,sp),sp				
+	move.l 24(a3),a1			
 						
-	subq.l #1,d0				
-	jbne _?L82				
-_?L105:						
+	clr.l d2				
+_?L89:						
 						
-	move.l 36(sp),d7			
-	add.l d7,8(a3)				
+	add.l a6,d1				
+						
+	cmp.l d1,a1				
+	jbhi _?L88				
+						
+	move.l 48(a3),a2			
+						
+	move.l (a2),a0				
+						
+	move.l 4(a2),a2				
+						
+	move.l d2,d1				
+	lsl.l #2,d1				
+	move.l (a0,d1.l),d7			
+	add.l (a2,d1.l),d7			
+	move.l d7,d1				
+						
+	moveq #12,d7				
+	asr.l d7,d1				
+						
+	move.w d1,(a5,d3.l*2)			
+						
+	addq.l #1,d3				
+						
+	clr.l d1				
+_?L88:						
+						
+	addq.l #1,d2				
+						
+	cmp.l d2,d0				
+	jbne _?L89				
+	move.l d1,44(a3)			
+_?L102:						
 						
 	move.l 52(a3),d0			
 						
-	jbne _?L104				
+	jbne _?L101				
 _?L76:						
 						
 	move.l 8(a3),d0				
@@ -655,8 +656,8 @@ _?L76:
 	move.l d1,-(sp)				
 	add.l (a3),d0				
 	move.l d0,-(sp)				
-	move.l a6,-(sp)				
-	jbsr _miniflac_decode			
+	move.l d6,-(sp)				
+	jbsr (a4)				
 	lea (20,sp),sp				
 						
 	subq.l #1,d0				
@@ -681,30 +682,30 @@ _?L76:
 	jbne _?L79				
 						
 	tst.l d0				
-	jbeq _?L83				
+	jbeq _?L75				
 _?L78:						
 	move.l 44(a3),d1			
 						
-	move.l 24(a3),a0			
+	move.l 24(a3),a1			
 						
 	clr.l d2				
 _?L85:						
 						
-	add.l a4,d1				
+	add.l a6,d1				
 						
-	cmp.l d1,a0				
+	cmp.l d1,a1				
 	jbhi _?L84				
 						
-	move.l 48(a3),a1			
+	move.l 48(a3),a2			
 						
-	move.l (a1),a2				
+	move.l (a2),a0				
 						
-	move.l 4(a1),a1				
+	move.l 4(a2),a2				
 						
 	move.l d2,d1				
 	lsl.l #2,d1				
-	move.l (a2,d1.l),d7			
-	add.l (a1,d1.l),d7			
+	move.l (a0,d1.l),d7			
+	add.l (a2,d1.l),d7			
 	move.l d7,d1				
 						
 	asr.l #4,d1				
@@ -721,81 +722,11 @@ _?L84:
 	cmp.l d2,d0				
 	jbne _?L85				
 	move.l d1,44(a3)			
-_?L106:						
-						
-	move.l 8(a3),d0				
-						
-	move.l d4,-(sp)				
-	move.l 4(a3),d1				
-	sub.l d0,d1				
-	move.l d1,-(sp)				
-	add.l (a3),d0				
-	move.l d0,-(sp)				
-	move.l a6,-(sp)				
-	move.l d6,a0				
-	jbsr (a0)				
-	lea (16,sp),sp				
-						
-	subq.l #1,d0				
-	jbeq _?L105				
-_?L82:						
-						
-	add.l d3,d3				
-						
-	move.l 60(sp),a0			
-	move.l d3,(a0)				
-						
-	clr.l d0				
-	movem.l (sp)+,d3/d4/d5/d6/d7/a3/a4/a5/a6
-	addq.l #4,sp				
-	rts					
-_?L103:						
-						
-	tst.l d0				
-	jbeq _?L83				
-	move.l 44(a3),d1			
-						
-	move.l 24(a3),a0			
-						
-	clr.l d2				
-_?L88:						
-						
-	add.l a4,d1				
-						
-	cmp.l d1,a0				
-	jbhi _?L87				
-						
-	move.l 48(a3),a1			
-						
-	move.l (a1),a2				
-						
-	move.l 4(a1),a1				
-						
-	move.l d2,d1				
-	lsl.l #2,d1				
-	move.l (a2,d1.l),d7			
-	add.l (a1,d1.l),d7			
-	move.l d7,d1				
-						
-	moveq #12,d7				
-	asr.l d7,d1				
-						
-	move.w d1,(a5,d3.l*2)			
-						
-	addq.l #1,d3				
-						
-	clr.l d1				
-_?L87:						
-						
-	addq.l #1,d2				
-						
-	cmp.l d2,d0				
-	jbne _?L88				
-	move.l d1,44(a3)			
-	jbra _?L106				
+	jbra _?L102				
 _?L77:						
 						
 	move.l d0,52(a3)			
+_?L82:						
 						
 	add.l d3,d3				
 						

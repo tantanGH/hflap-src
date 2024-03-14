@@ -96,7 +96,7 @@ frame, or call miniflac_decode to continue on.
         #define MINIFLAC_PRIVATE MINIFLAC_DLL_PRIVATE
     #else
         #define MINIFLAC_API extern
-        #define MINIFLAC_PRIVATE static
+        #define MINIFLAC_PRIVATE static inline
     #endif
 #endif
 

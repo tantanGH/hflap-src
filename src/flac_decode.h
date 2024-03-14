@@ -6,9 +6,9 @@
 #include <stdint.h>
 #include <stddef.h>
 
-//#define MINIFLAC_IMPLEMENTATION
-//#include "miniflac.h"
-#include "src/flac.h"
+#define MINIFLAC_IMPLEMENTATION
+#define MINIFLAC_PRIVATE static inline
+#include "miniflac.h"
 
 typedef miniflac_t MINIFLAC;
 
