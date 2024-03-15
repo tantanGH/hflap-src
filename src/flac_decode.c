@@ -181,27 +181,79 @@ int32_t flac_decode_setup(FLAC_DECODE_HANDLE* decode, void* flac_data, size_t fl
     tag_ofs += 4;
 
     if ((meta_type & 0x7f) == 4) {
+
       // VORBIS_COMMENT
+
       size_t vendor_comment_size = decode->flac_data[tag_ofs] + 
                                    (decode->flac_data[tag_ofs+1] << 8) +
                                    (decode->flac_data[tag_ofs+2] << 16) +
                                    (decode->flac_data[tag_ofs+3] << 24);
 
-      decode->tag_vendor = himem_malloc(vendor_comment_size, 1);  // cp932 size is equal or smaller than utf8
-      convert_utf8_to_cp932(decode->tag_vendor, &(decode->flac_data[tag_ofs+4]), vendor_comment_size);
+      tag_ofs += 4;
+
+      decode->tag_vendor = himem_malloc(vendor_comment_size * 2, 1);
+      convert_utf8_to_cp932(decode->tag_vendor, &(decode->flac_data[tag_ofs]), vendor_comment_size);
       
+      tag_ofs += vendor_comment_size;
+
       size_t num_comments = decode->flac_data[tag_ofs] + 
                             (decode->flac_data[tag_ofs+1] << 8) +
                             (decode->flac_data[tag_ofs+2] << 16) +
                             (decode->flac_data[tag_ofs+3] << 24);
 
+      tag_ofs += 4;
+
+      for (int16_t i = 0; i < num_comments; i++) {
+
+        uint8_t tag_key[] = "                ";
+
+        size_t comment_size = decode->flac_data[tag_ofs] + 
+                              (decode->flac_data[tag_ofs+1] << 8) +
+                              (decode->flac_data[tag_ofs+2] << 16) +
+                              (decode->flac_data[tag_ofs+3] << 24);
+
+        tag_ofs += 4;
+
+        for (int16_t j = 0; j < comment_size && j < 16; j++) {
+          if (decode->flac_data[tag_ofs + j] != '=') continue;
+          int16_t epos = j;
+          memcpy(tag_key, &(decode->flac_data[tag_ofs]), epos);
+          tag_key[epos] = '\0';
+          size_t value_size = comment_size - epos - 1;
+          //printf("tag_key=[%s], epos=%d, comment_size=%d, value_size=%d\n", tag_key, epos, comment_size, value_size);
+          if (value_size > 0) {
+            if (stricmp(tag_key, "ARTIST") == 0) {
+              decode->tag_artist = himem_malloc(value_size * 2, 1);
+              convert_utf8_to_cp932(decode->tag_artist, &(decode->flac_data[tag_ofs + epos + 1]), value_size);
+            } else if (stricmp(tag_key, "ALBUM") == 0) {
+              decode->tag_album = himem_malloc(value_size * 2, 1);
+              convert_utf8_to_cp932(decode->tag_album, &(decode->flac_data[tag_ofs + epos + 1]), value_size);
+            } else if (stricmp(tag_key, "TITLE") == 0) {
+              decode->tag_title = himem_malloc(value_size * 2, 1);
+              convert_utf8_to_cp932(decode->tag_title, &(decode->flac_data[tag_ofs + epos + 1]), value_size);
+            }
+          }
+          break;
+        }
+
+        tag_ofs += comment_size;
+
+      }
+
     } else if ((meta_type & 0x7f) == 6) {
+
       // PICTURE
+
+      tag_ofs += meta_size;
+
+    } else {
+
+      tag_ofs += meta_size;
+
     }
 
-    tag_ofs += meta_size;
-
     if (meta_type & 0x80) break;
+
   }
 
   // obtain sampling parameters
@@ -215,7 +267,7 @@ int32_t flac_decode_setup(FLAC_DECODE_HANDLE* decode, void* flac_data, size_t fl
     //printf("setup pos %d\n", decode->flac_data_pos);
     //printf("%d %d %d\n",state, used_bytes, decoded_len);
   } while (state != FLAC_END_OF_METADATA);
-    
+
   decode->sample_rate = fx_flac_get_streaminfo(decode->fx_flac, FLAC_KEY_SAMPLE_RATE);
   decode->channels = fx_flac_get_streaminfo(decode->fx_flac, FLAC_KEY_N_CHANNELS);
   decode->bps = fx_flac_get_streaminfo(decode->fx_flac, FLAC_KEY_SAMPLE_SIZE);
