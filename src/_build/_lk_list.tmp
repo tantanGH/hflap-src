@@ -2,10 +2,10 @@ _build/himem.o
 _build/crtc.o
 _build/pcm8a.o
 _build/pcm8pp.o
+_build/flac.o
 _build/flac_decode.o
 _build/main.o
 _build/cp932rsc.o
-../miniflac-1.1.1/src/_build/flacall.o
 _build/CLIB.L
 _build/DOSLIB.L
 _build/IOCSLIB.L

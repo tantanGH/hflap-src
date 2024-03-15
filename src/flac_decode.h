@@ -26,7 +26,8 @@ typedef struct {
   uint64_t num_samples;
   size_t resample_counter;
 
-  int32_t** samples;
+  int32_t* samples;
+  size_t samples_len;
   size_t pending_len;
 
   void* fx_flac_buffer;

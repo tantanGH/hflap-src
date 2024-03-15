@@ -46,6 +46,10 @@ static int32_t g_funckey_mode = -1;
 //
 static uint32_t g_original_pcm8pp_frequency_mode = 0;
 
+// file read buffers
+static void* fread_buffer = NULL;
+static void* fread_staging_buffer = NULL;
+
 //
 //  abort vector handler
 //
@@ -55,14 +59,9 @@ static void abort_application() {
   INTVCS(0xFFF1, (int8_t*)g_abort_vector1);
   INTVCS(0xFFF2, (int8_t*)g_abort_vector2);  
 
-  // resume pcm8pp settings
-  if (pcm8pp_isavailable()) {
-    pcm8pp_stop();
-    pcm8pp_set_frequency_mode(g_original_pcm8pp_frequency_mode);
-  }
-
   // reclaim chain table buffers (pcm8a)
   if (pcm8a_isavailable()) {
+    pcm8a_stop();
     CHAIN_TABLE* rct = g_init_chain_table;
     while (rct != NULL) {
       if (rct->buffer != NULL) {
@@ -77,6 +76,8 @@ static void abort_application() {
 
   // reclaim chain table buffers (pcm8pp)
   if (pcm8pp_isavailable()) {
+    pcm8pp_stop();
+    pcm8pp_set_frequency_mode(g_original_pcm8pp_frequency_mode);
     CHAIN_TABLE_EX* rct = g_init_chain_table_ex;
     while (rct != NULL) {
       if (rct->buffer != NULL) {
@@ -87,6 +88,16 @@ static void abort_application() {
       himem_free(pre_rct, 1);
     }
     g_init_chain_table_ex = NULL;
+  }
+
+  // reclaim file read buffers
+  if (fread_staging_buffer != NULL) {
+    himem_free(fread_staging_buffer, 0);
+    fread_staging_buffer = NULL;
+  }
+  if (fread_buffer != NULL) {
+    himem_free(fread_buffer, 1);
+    fread_buffer = NULL;
   }
 
   // cursor on
@@ -305,9 +316,7 @@ loop:
   CHAIN_TABLE* cur_chain_table = NULL;
   CHAIN_TABLE_EX* cur_chain_table_ex = NULL;
 
-  // file read buffers
-  void* fread_buffer = NULL;
-  void* fread_staging_buffer = NULL;
+  // file read pointer
   FILE* fp = NULL;
 
 try:
@@ -350,9 +359,9 @@ try:
   }
 
   // read whole flac file content into high memory
+  printf("\rLoading FLAC file...\x1b[0K");
   if (staging_file_read) {
     // use staging buffer on main memory (for SCSI disk)
-    printf("\rLoading FLAC file...\x1b[0K");
     fread_staging_buffer = himem_malloc(FREAD_STAGING_BUFFER_BYTES, 0);   // allocate in main memory
     if (fread_staging_buffer == NULL) {
       strcpy(error_mes, cp932rsc_mainmem_shortage);
@@ -366,7 +375,6 @@ try:
     } while (read_len < flac_data_size);
     himem_free(fread_staging_buffer, 0);
     fread_staging_buffer = NULL;
-    printf("\r\x1b[0K");
   } else {
     // direct load to high memory from VDISK/WindrvXM
     size_t read_len = 0; 
@@ -378,6 +386,7 @@ try:
   }
   fclose(fp);
   fp = NULL;
+  printf("\r\x1b[0K");
 
   // setup flac decoder
   if (flac_decode_setup(&flac_decoder, fread_buffer, flac_data_size) != 0) {
@@ -685,6 +694,7 @@ try:
           strcpy(error_mes, cp932rsc_flac_decode_error);
           goto catch;      
         }
+        //printf("decoded %d\n", decoded_bytes);
 
         // end of flac?
         if (decoded_bytes == 0) {
@@ -840,7 +850,7 @@ catch:
 
   // reclaim file read buffers
   if (fread_staging_buffer != NULL) {
-    himem_free(fread_staging_buffer, 1);
+    himem_free(fread_staging_buffer, 0);
     fread_staging_buffer = NULL;
   }
   if (fread_buffer != NULL) {
