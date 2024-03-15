@@ -6,13 +6,9 @@
 #include <stdint.h>
 #include <stddef.h>
 
-//#define MINIFLAC_IMPLEMENTATION
-#include "miniflac.h"
+#include "flac.h"
 
-typedef miniflac_t MINIFLAC;
-
-#define FLAC_MAX_CHANNELS         (8)
-#define FLAC_DECODE_BUFFER_LEN    (65535)
+typedef fx_flac_t FX_FLAC;
 
 typedef struct {
 
@@ -20,6 +16,7 @@ typedef struct {
   size_t flac_data_len;
   size_t flac_data_pos;
 
+  uint8_t* tag_vendor;
   uint8_t* tag_title;
   uint8_t* tag_artist;
   uint8_t* tag_album;
@@ -30,10 +27,12 @@ typedef struct {
   uint64_t num_samples;
   size_t resample_counter;
 
-  int32_t** samples;
+  int32_t* samples;
+  size_t samples_len;
   size_t pending_len;
 
-  MINIFLAC miniflac;
+  void* fx_flac_buffer;
+  FX_FLAC* fx_flac;
 
 } FLAC_DECODE_HANDLE;
 

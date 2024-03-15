@@ -46,6 +46,10 @@ static int32_t g_funckey_mode = -1;
 //
 static uint32_t g_original_pcm8pp_frequency_mode = 0;
 
+// file read buffers
+static void* fread_buffer = NULL;
+static void* fread_staging_buffer = NULL;
+
 //
 //  abort vector handler
 //
@@ -55,8 +59,15 @@ static void abort_application() {
   INTVCS(0xFFF1, (int8_t*)g_abort_vector1);
   INTVCS(0xFFF2, (int8_t*)g_abort_vector2);  
 
-  // resume pcm8pp settings
+  // stop pcm8a
+  if (pcm8a_isavailable()) {
+    pcm8a_pause();
+    pcm8a_stop();
+  }
+
+  // stop pcm8pp
   if (pcm8pp_isavailable()) {
+    pcm8pp_pause();
     pcm8pp_stop();
     pcm8pp_set_frequency_mode(g_original_pcm8pp_frequency_mode);
   }
@@ -87,6 +98,16 @@ static void abort_application() {
       himem_free(pre_rct, 1);
     }
     g_init_chain_table_ex = NULL;
+  }
+
+  // reclaim file read buffers
+  if (fread_staging_buffer != NULL) {
+    himem_free(fread_staging_buffer, 0);
+    fread_staging_buffer = NULL;
+  }
+  if (fread_buffer != NULL) {
+    himem_free(fread_buffer, 1);
+    fread_buffer = NULL;
   }
 
   // cursor on
@@ -132,7 +153,7 @@ exit:
 //  show help message
 //
 static void show_help_message() {
-  printf("HFLAP.X - High Memory FLAC player for X680x0 + Mercury-UNIT version " VERSION " by tantan\n");
+  printf("HFLAP.X - High Memory FLAC player for X680x0 version " VERSION " by tantan\n");
   printf("usage: hflap [options] <input-file.fla>\n");
   printf("options:\n");
   printf("     -l[n] ... loop count (none:endless, default:1)\n");
@@ -257,7 +278,7 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
 
   // credit
   if (pic_brightness == 0) {
-    printf("HFLAP.X - High Memory FLAC player for X680x0 + Mercury-UNIT version " VERSION " by tantan\n");
+    printf("HFLAP.X - High Memory FLAC player for X680x0 version " VERSION " by tantan\n");
   }
 
   // reset PCM8A/PCM8PP
@@ -305,9 +326,7 @@ loop:
   CHAIN_TABLE* cur_chain_table = NULL;
   CHAIN_TABLE_EX* cur_chain_table_ex = NULL;
 
-  // file read buffers
-  void* fread_buffer = NULL;
-  void* fread_staging_buffer = NULL;
+  // file read pointer
   FILE* fp = NULL;
 
 try:
@@ -350,9 +369,9 @@ try:
   }
 
   // read whole flac file content into high memory
+  printf("\rLoading FLAC file...\x1b[0K");
   if (staging_file_read) {
     // use staging buffer on main memory (for SCSI disk)
-    printf("\rLoading FLAC file...\x1b[0K");
     fread_staging_buffer = himem_malloc(FREAD_STAGING_BUFFER_BYTES, 0);   // allocate in main memory
     if (fread_staging_buffer == NULL) {
       strcpy(error_mes, cp932rsc_mainmem_shortage);
@@ -366,7 +385,6 @@ try:
     } while (read_len < flac_data_size);
     himem_free(fread_staging_buffer, 0);
     fread_staging_buffer = NULL;
-    printf("\r\x1b[0K");
   } else {
     // direct load to high memory from VDISK/WindrvXM
     size_t read_len = 0; 
@@ -378,6 +396,13 @@ try:
   }
   fclose(fp);
   fp = NULL;
+  printf("\r\x1b[0K");
+
+  // check eye catch
+  if (memcmp(fread_buffer, "fLaC", 4) != 0) {
+    strcpy(error_mes, cp932rsc_not_flac_file);
+    goto catch;
+  }
 
   // setup flac decoder
   if (flac_decode_setup(&flac_decoder, fread_buffer, flac_data_size) != 0) {
@@ -392,7 +417,7 @@ try:
   }
 
   // check frequency
-  if (flac_decoder.sample_rate != 44100 && flac_decoder.sample_rate != 48000 && flac_decoder.sample_rate != 96000) {
+  if (flac_decoder.sample_rate != 44100 && flac_decoder.sample_rate != 48000) {
     strcpy(error_mes, cp932rsc_flac_freq_error);
     goto catch;
   }
@@ -422,6 +447,9 @@ try:
     printf("FLAC bit depth : %d [bits]\n", flac_decoder.bps);
 //    printf("FLAC length    : %ld [secs]\n", flac_decoder.num_samples);
 
+    if (flac_decoder.tag_vendor != NULL) {
+      printf("FLAC vendor    : %s\n", flac_decoder.tag_vendor);
+    }
     if (flac_decoder.tag_title != NULL) {
       printf("FLAC title     : %s\n", flac_decoder.tag_title);
     }
@@ -603,7 +631,9 @@ try:
 
   }
 
+  printf("\r\x1b[0K\x1bM");
   printf("\nNow playing ... push [ESC]/[Q] key to quit. [SPACE] to pause.\x1b[0K\n");
+
   int16_t paused = 0;
 
   // dummy wait to make sure DMAC start (200 msec)
@@ -683,6 +713,7 @@ try:
           strcpy(error_mes, cp932rsc_flac_decode_error);
           goto catch;      
         }
+        //printf("decoded %d\n", decoded_bytes);
 
         // end of flac?
         if (decoded_bytes == 0) {
@@ -838,7 +869,7 @@ catch:
 
   // reclaim file read buffers
   if (fread_staging_buffer != NULL) {
-    himem_free(fread_staging_buffer, 1);
+    himem_free(fread_staging_buffer, 0);
     fread_staging_buffer = NULL;
   }
   if (fread_buffer != NULL) {

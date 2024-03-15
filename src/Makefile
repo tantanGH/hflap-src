@@ -28,7 +28,7 @@ TARGET_FILE = HFLAP.X
 DOCUMENT_FILE = HFLAP.DOC
 
 # Distribution package 
-PACKAGE_FILE = ../HFLAP010.ZIP
+PACKAGE_FILE = ../HFLAP016.ZIP
 
 # ヘッダ検索パス
 INCLUDE_FLAGS = -I${XDEV68K_DIR}/include/xc -I${XDEV68K_DIR}/include/xdev68k -I${MINIFLAC_DIR}
@@ -36,18 +36,17 @@ INCLUDE_FLAGS = -I${XDEV68K_DIR}/include/xc -I${XDEV68K_DIR}/include/xdev68k -I$
 # コンパイルフラグ
 COMMON_FLAGS = -m68030 -O3 $(INCLUDE_FLAGS) -z-stack=8192
 CFLAGS = $(COMMON_FLAGS) -Wno-builtin-declaration-mismatch -fcall-used-d2 -fcall-used-a2 \
-    -fexec-charset=cp932 -fverbose-asm -fno-defer-pop
+    -fexec-charset=cp932 -fverbose-asm -fno-defer-pop -DXDEV68K
 
 # *.c ソースファイル
-#C_SRCS = himem.c crtc.c pcm8a.c pcm8pp.c mp3_decode.c picojpeg.c jpeg_decode.c main.c
-C_SRCS = himem.c crtc.c pcm8a.c pcm8pp.c flac_decode.c main.c
+C_SRCS = himem.c crtc.c pcm8a.c pcm8pp.c flac.c flac_decode.c utf8_cp932.c main.c
+
 # *.s ソースファイル
-#ASM_SRCS = utf16_cp932.s cp932rsc.s
 ASM_SRCS = cp932rsc.s
 
 # *.h source files
 #HEADER_SRCS = utf16_cp932.h cp932rsc.h himem.h crtc.h pcm8a.h pcm8pp.h mp3_decode.h picojpeg.h jpeg_decode.h hmp3p.h
-HEADER_SRCS = cp932rsc.h himem.h crtc.h pcm8a.h pcm8pp.h flac_decode.h hflap.h
+HEADER_SRCS = cp932rsc.h himem.h crtc.h pcm8a.h pcm8pp.h flac.h flac_decode.h utf8_cp932.h hflap.h
 
 # リンク対象のライブラリファイル
 LIBS =\
@@ -63,35 +62,6 @@ INTERMEDIATE_DIR = _build
 # オブジェクトファイル
 OBJS = $(addprefix $(INTERMEDIATE_DIR)/,$(patsubst %.c,%.o,$(C_SRCS))) \
 	$(addprefix $(INTERMEDIATE_DIR)/,$(patsubst %.s,%.o,$(ASM_SRCS))) 
-
-# オブジェクトファイル (miniflac)
-OBJS2 = ${MINIFLAC_DIR}/src/_build/*.o
-OBJS2 = \
-  ${MINIFLAC_DIR}/src/_build/application.o \
-  ${MINIFLAC_DIR}/src/_build/bitreader.o \
-  ${MINIFLAC_DIR}/src/_build/cuesheet.o \
-  ${MINIFLAC_DIR}/src/_build/flac.o \
-  ${MINIFLAC_DIR}/src/_build/frame.o \
-  ${MINIFLAC_DIR}/src/_build/frameheader.o \
-  ${MINIFLAC_DIR}/src/_build/metadata.o \
-  ${MINIFLAC_DIR}/src/_build/metadataheader.o \
-  ${MINIFLAC_DIR}/src/_build/mflac.o \
-  ${MINIFLAC_DIR}/src/_build/ogg.o \
-  ${MINIFLAC_DIR}/src/_build/oggheader.o \
-  ${MINIFLAC_DIR}/src/_build/padding.o \
-  ${MINIFLAC_DIR}/src/_build/picture.o \
-  ${MINIFLAC_DIR}/src/_build/residual.o \
-  ${MINIFLAC_DIR}/src/_build/seektable.o \
-  ${MINIFLAC_DIR}/src/_build/subframe.o \
-  ${MINIFLAC_DIR}/src/_build/subframe_constant.o \
-  ${MINIFLAC_DIR}/src/_build/subframe_verbatim.o \
-  ${MINIFLAC_DIR}/src/_build/subframe_fixed.o \
-  ${MINIFLAC_DIR}/src/_build/subframe_lpc.o \
-  ${MINIFLAC_DIR}/src/_build/subframeheader.o \
-  ${MINIFLAC_DIR}/src/_build/streaminfo.o \
-  ${MINIFLAC_DIR}/src/_build/streammarker.o \
-  ${MINIFLAC_DIR}/src/_build/vorbiscomment.o \
-  ${MINIFLAC_DIR}/src/_build/unpack.o
 
 # HLK に入力するリンクリスト
 HLK_LINK_LIST = $(INTERMEDIATE_DIR)/_lk_list.tmp
@@ -111,7 +81,7 @@ clean :
 ${INTERMEDIATE_DIR}/$(TARGET_FILE) : $(OBJS)
 	mkdir -p $(INTERMEDIATE_DIR)
 	rm -f $(HLK_LINK_LIST)
-	@for FILENAME in $(OBJS) $(OBJS2); do\
+	@for FILENAME in $(OBJS); do\
 		echo $$FILENAME >> $(HLK_LINK_LIST); \
         done
 	@for FILENAME in $(LIBS); do\

@@ -67,7 +67,7 @@ _cp932rsc_flac_bps_error:
   .dc.b '16bit/24bitのFLACデータのみ対応しています。',$00
 
 _cp932rsc_flac_freq_error:
-  .dc.b '44.1kHz/48.0kHz/96.0kHzのFLACデータのみ対応しています。',$00
+  .dc.b '44.1kHz/48.0kHzのFLACデータのみ対応しています。',$00
 
 _cp932rsc_flac_channel_error:
   .dc.b '2ch stereoのFLACデータのみ対応しています。',$00
