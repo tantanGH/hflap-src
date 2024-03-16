@@ -18,9 +18,6 @@ RUN68 = ${XDEV68K_DIR}/run68/run68x
 HAS = $(RUN68) ${XDEV68K_DIR}/x68k_bin/HAS060.X
 HLK = $(RUN68) ${XDEV68K_DIR}/x68k_bin/hlk.r
 
-# miniflac directory
-MINIFLAC_DIR="../miniflac-1.1.1"
-
 # 実行ファイル名
 TARGET_FILE = HFLAP.X
 
@@ -28,10 +25,10 @@ TARGET_FILE = HFLAP.X
 DOCUMENT_FILE = HFLAP.DOC
 
 # Distribution package 
-PACKAGE_FILE = ../HFLAP016.ZIP
+PACKAGE_FILE = ../HFLAP020.ZIP
 
 # ヘッダ検索パス
-INCLUDE_FLAGS = -I${XDEV68K_DIR}/include/xc -I${XDEV68K_DIR}/include/xdev68k -I${MINIFLAC_DIR}
+INCLUDE_FLAGS = -I${XDEV68K_DIR}/include/xc -I${XDEV68K_DIR}/include/xdev68k
 
 # コンパイルフラグ
 COMMON_FLAGS = -m68030 -O3 $(INCLUDE_FLAGS) -z-stack=8192
@@ -39,14 +36,13 @@ CFLAGS = $(COMMON_FLAGS) -Wno-builtin-declaration-mismatch -fcall-used-d2 -fcall
     -fexec-charset=cp932 -fverbose-asm -fno-defer-pop -DXDEV68K
 
 # *.c ソースファイル
-C_SRCS = himem.c crtc.c pcm8a.c pcm8pp.c flac.c flac_decode.c utf8_cp932.c main.c
+C_SRCS = himem.c crtc.c pcm8a.c pcm8pp.c flac.c flac_decode.c picojpeg.c jpeg_decode.c utf8_cp932.c main.c
 
 # *.s ソースファイル
 ASM_SRCS = cp932rsc.s
 
 # *.h source files
-#HEADER_SRCS = utf16_cp932.h cp932rsc.h himem.h crtc.h pcm8a.h pcm8pp.h mp3_decode.h picojpeg.h jpeg_decode.h hmp3p.h
-HEADER_SRCS = cp932rsc.h himem.h crtc.h pcm8a.h pcm8pp.h flac.h flac_decode.h utf8_cp932.h hflap.h
+HEADER_SRCS = cp932rsc.h himem.h crtc.h pcm8a.h pcm8pp.h flac.h flac_decode.h picojpeg.h jpeg_decode.h utf8_cp932.h hflap.h
 
 # リンク対象のライブラリファイル
 LIBS =\

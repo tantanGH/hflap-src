@@ -345,16 +345,6 @@ try:
     goto catch;
   }
 
-  // adjust scroll position
-  if (pic_brightness > 0) {
-    SCROLL(0, 512-128, 0);
-    SCROLL(1, 512-128, 0);
-    SCROLL(2, 512-128, 0);
-    SCROLL(3, 512-128, 0);
-    struct TXFILLPTR txfil = { 2, 128, 0, 512, 512, 0x0000 };
-    TXFILL(&txfil);
-  }
-
   // obtain data content size
   fseek(fp, 0, SEEK_END);
   uint32_t flac_data_size = ftell(fp);
@@ -405,9 +395,21 @@ try:
   }
 
   // setup flac decoder
-  if (flac_decode_setup(&flac_decoder, fread_buffer, flac_data_size) != 0) {
+  printf("\rLoading tags and picture image...\x1b[0K");
+  if (flac_decode_setup(&flac_decoder, fread_buffer, flac_data_size, pic_brightness, 0) != 0) {
     strcpy(error_mes, cp932rsc_flac_decoder_setup_error);
     goto catch;
+  }
+  printf("\r\x1b[0K");
+
+  // adjust scroll position
+  if (pic_brightness > 0) {
+    SCROLL(0, 512-128, 0);
+    SCROLL(1, 512-128, 0);
+    SCROLL(2, 512-128, 0);
+    SCROLL(3, 512-128, 0);
+    struct TXFILLPTR txfil = { 2, 128, 0, 512, 512, 0x0000 };
+    TXFILL(&txfil);
   }
 
   // check bps
