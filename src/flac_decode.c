@@ -3,6 +3,7 @@
 #include <string.h>
 #include "himem.h"
 #include "utf8_cp932.h"
+#include "jpeg_decode.h"
 #include "flac_decode.h"
 
 //
@@ -154,7 +155,7 @@ void flac_decode_close(FLAC_DECODE_HANDLE* decode) {
 //
 //  setup decode operation
 //
-int32_t flac_decode_setup(FLAC_DECODE_HANDLE* decode, void* flac_data, size_t flac_data_len) {
+int32_t flac_decode_setup(FLAC_DECODE_HANDLE* decode, void* flac_data, size_t flac_data_len, int16_t brightness, int16_t half_size) {
 
   int32_t rc = -1;
 
@@ -169,6 +170,23 @@ int32_t flac_decode_setup(FLAC_DECODE_HANDLE* decode, void* flac_data, size_t fl
   decode->bps = -1;
   decode->num_samples = 0;
   decode->resample_counter = 0;
+
+  // obtain sampling parameters
+  fx_flac_state_t state;
+  do {
+    uint32_t used_bytes = decode->flac_data_len - decode->flac_data_pos;
+    uint32_t decoded_len = decode->samples_len;
+    state = fx_flac_process(decode->fx_flac, &(decode->flac_data[decode->flac_data_pos]), &used_bytes, decode->samples, &decoded_len);
+    if (state == FLAC_ERR) goto exit;
+    decode->flac_data_pos += used_bytes;
+    //printf("setup pos %d\n", decode->flac_data_pos);
+    //printf("%d %d %d\n",state, used_bytes, decoded_len);
+  } while (state != FLAC_END_OF_METADATA);
+
+  decode->sample_rate = fx_flac_get_streaminfo(decode->fx_flac, FLAC_KEY_SAMPLE_RATE);
+  decode->channels = fx_flac_get_streaminfo(decode->fx_flac, FLAC_KEY_N_CHANNELS);
+  decode->bps = fx_flac_get_streaminfo(decode->fx_flac, FLAC_KEY_SAMPLE_SIZE);
+  decode->num_samples = fx_flac_get_streaminfo(decode->fx_flac, FLAC_KEY_N_SAMPLES);
 
   // obtain tags
   size_t tag_ofs = 4;
@@ -240,11 +258,65 @@ int32_t flac_decode_setup(FLAC_DECODE_HANDLE* decode, void* flac_data, size_t fl
 
       }
 
-    } else if ((meta_type & 0x7f) == 6) {
+    } else if (brightness > 0 && (meta_type & 0x7f) == 6) {
 
       // PICTURE
 
-      tag_ofs += meta_size;
+      uint32_t picture_type = (decode->flac_data[tag_ofs] << 24) + 
+                              (decode->flac_data[tag_ofs+1] << 16) +
+                              (decode->flac_data[tag_ofs+2] << 8) +
+                              decode->flac_data[tag_ofs+3];
+
+      tag_ofs += 4;
+
+      size_t mime_type_size = (decode->flac_data[tag_ofs] << 24) + 
+                              (decode->flac_data[tag_ofs+1] << 16) +
+                              (decode->flac_data[tag_ofs+2] << 8) +
+                              decode->flac_data[tag_ofs+3];
+
+      tag_ofs += 4;
+
+      if (mime_type_size >= 10 && memcmp("image/jpeg", &(decode->flac_data[tag_ofs]), 10) == 0) {
+
+        tag_ofs += mime_type_size;
+
+        //printf("mime_type_size=%d\n", mime_type_size);
+
+        size_t picture_desc_size = (decode->flac_data[tag_ofs] << 24) + 
+                                   (decode->flac_data[tag_ofs+1] << 16) +
+                                   (decode->flac_data[tag_ofs+2] << 8) +
+                                   decode->flac_data[tag_ofs+3];
+
+        //printf("picture_desc_size=%d\n", picture_desc_size);
+
+        tag_ofs += 4 + picture_desc_size + 4 + 4 + 4 + 4;
+
+        size_t picture_size = (decode->flac_data[tag_ofs] << 24) + 
+                              (decode->flac_data[tag_ofs+1] << 16) +
+                              (decode->flac_data[tag_ofs+2] << 8) +
+                              decode->flac_data[tag_ofs+3];
+      
+        //printf("picture_size=%d\n", picture_size);
+
+        tag_ofs += 4;
+
+        uint8_t* picture_data = &(decode->flac_data[tag_ofs]);
+        if (picture_size > 2 && picture_data[0] == 0xff && picture_data[1] == 0xd8) {
+          JPEG_DECODE_HANDLE jpeg_decode;
+          jpeg_decode_init(&jpeg_decode, brightness, half_size);
+          if (jpeg_decode_exec(&jpeg_decode, picture_data, picture_size) != 0) {
+//          printf("unsupported jpeg artwork format. (progressive JPEG?)\n");
+          }
+          jpeg_decode_close(&jpeg_decode);
+        }
+
+        tag_ofs += picture_size;
+
+      } else {
+
+        tag_ofs += meta_size - 8;
+
+      }
 
     } else {
 
@@ -255,23 +327,6 @@ int32_t flac_decode_setup(FLAC_DECODE_HANDLE* decode, void* flac_data, size_t fl
     if (meta_type & 0x80) break;
 
   }
-
-  // obtain sampling parameters
-  fx_flac_state_t state;
-  do {
-    uint32_t used_bytes = decode->flac_data_len - decode->flac_data_pos;
-    uint32_t decoded_len = decode->samples_len;
-    state = fx_flac_process(decode->fx_flac, &(decode->flac_data[decode->flac_data_pos]), &used_bytes, decode->samples, &decoded_len);
-    if (state == FLAC_ERR) goto exit;
-    decode->flac_data_pos += used_bytes;
-    //printf("setup pos %d\n", decode->flac_data_pos);
-    //printf("%d %d %d\n",state, used_bytes, decoded_len);
-  } while (state != FLAC_END_OF_METADATA);
-
-  decode->sample_rate = fx_flac_get_streaminfo(decode->fx_flac, FLAC_KEY_SAMPLE_RATE);
-  decode->channels = fx_flac_get_streaminfo(decode->fx_flac, FLAC_KEY_N_CHANNELS);
-  decode->bps = fx_flac_get_streaminfo(decode->fx_flac, FLAC_KEY_SAMPLE_SIZE);
-  decode->num_samples = fx_flac_get_streaminfo(decode->fx_flac, FLAC_KEY_N_SAMPLES);
 
   rc = 0;
 

@@ -1,11 +1,16 @@
 # hflap-src
-HFLAP.X source code tree
+HFLAP source code tree
 
 ---
 
-HFLAP.X is using the following awesome software libraries:
+HFLAP is using the following awesome software libraries:
 
+- picojpeg (public domain)
 - libfoxenflac (GPL2)
+
+---
+
+picojpeg - Public domain, Rich Geldreich <richgel99@gmail.com>
 
 ---
 

@@ -6,7 +6,7 @@
 extern uint8_t cp932rsc_unknown_option[];
 extern uint8_t cp932rsc_too_many_files[];
 extern uint8_t cp932rsc_file_open_error[];
-extern uint8_t cp932rsc_id3tag_read_error[];
+extern uint8_t cp932rsc_tag_read_error[];
 extern uint8_t cp932rsc_file_read_error[];
 extern uint8_t cp932rsc_header_read_error[];
 extern uint8_t cp932rsc_himem_not_available[];

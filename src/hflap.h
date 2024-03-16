@@ -1,7 +1,7 @@
 #ifndef __H_HFLAP__
 #define __H_HFLAP__
 
-#define VERSION "0.1.7 (2024/03/16)"
+#define VERSION "0.2.0 (2024/03/16)"
 
 #define MAX_PATH_LEN (256)
 
