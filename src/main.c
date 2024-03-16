@@ -244,10 +244,10 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
         goto exit;
       }
       flac_file_name = argv[i];
-      if (strlen(flac_file_name) < 5 || stricmp(flac_file_name + strlen(flac_file_name) - 4, ".fla") != 0) {
-        strcpy(error_mes, cp932rsc_not_flac_file);
-        goto exit;
-      }
+//      if (strlen(flac_file_name) < 5 || stricmp(flac_file_name + strlen(flac_file_name) - 4, ".fla") != 0) {
+//        strcpy(error_mes, cp932rsc_not_flac_file);
+//        goto exit;
+//      }
     }
   }
 
