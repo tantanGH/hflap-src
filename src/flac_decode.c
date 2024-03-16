@@ -153,6 +153,47 @@ void flac_decode_close(FLAC_DECODE_HANDLE* decode) {
 }
 
 //
+//  get skip offset (skip ID3v2 tags)
+//
+int32_t flac_decode_get_skip_offset(FLAC_DECODE_HANDLE* decode, FILE* fp) {
+
+  // read the first 10 bytes of the FLAC file
+  uint8_t flac_header[10];
+  size_t ret = fread(flac_header, 1, 10, fp);
+  if (ret != 10) {
+    return -1;
+  }
+
+  // check if the file has an ID3v2 tag
+  if (!(flac_header[0] == 'I' && flac_header[1] == 'D' && flac_header[2] == '3')) {
+    return 0;
+  }
+
+  // extract the total tag size (syncsafe integer)
+  uint32_t total_tag_size = ((flac_header[6] & 0x7f) << 21) | ((flac_header[7] & 0x7f) << 14) |
+                            ((flac_header[8] & 0x7f) << 7)  | (flac_header[9] & 0x7f);
+
+  // ID3v2 version
+  int16_t id3v2_version = flac_header[3];
+  if (id3v2_version < 0x03) {
+    return total_tag_size + 10;     // does not support ID3v2.2 or before
+  }
+
+  // skip extended ID3v2 header
+  if (flac_header[5] & (1<<6)) {
+    uint8_t ext_header[6];
+    fread(ext_header, 1, 6, fp);
+    uint32_t ext_header_size = id3v2_version == 0x03 ? *((uint32_t*)(ext_header + 0)) :
+                                ((ext_header[0] & 0x7f) << 21) | ((ext_header[1] & 0x7f) << 14) |
+                                ((ext_header[2] & 0x7f) << 7)  | (ext_header[3] & 0x7f);
+    fseek(fp, ext_header_size, SEEK_CUR);
+    total_tag_size -= 6 + ext_header_size;
+  }
+
+  return 10 + total_tag_size;
+}
+
+//
 //  setup decode operation
 //
 int32_t flac_decode_setup(FLAC_DECODE_HANDLE* decode, void* flac_data, size_t flac_data_len, int16_t brightness, int16_t half_size) {
