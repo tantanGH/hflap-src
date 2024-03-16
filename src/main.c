@@ -345,10 +345,17 @@ try:
     goto catch;
   }
 
+  // get skip offset (skip ID3 tag)
+  int32_t skip_offset = flac_decode_get_skip_offset(&flac_decoder, fp);
+  if (skip_offset < 0) {
+    strcpy(error_mes, cp932rsc_file_open_error);
+    goto catch;    
+  }
+
   // obtain data content size
   fseek(fp, 0, SEEK_END);
-  uint32_t flac_data_size = ftell(fp);
-  fseek(fp, 0, SEEK_SET);
+  uint32_t flac_data_size = ftell(fp) - skip_offset;
+  fseek(fp, skip_offset, SEEK_SET);
 
   // allocate file read buffer
   size_t fread_buffer_len = flac_data_size;
