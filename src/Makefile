@@ -25,7 +25,7 @@ TARGET_FILE = HFLAP.X
 DOCUMENT_FILE = HFLAP.DOC
 
 # Distribution package 
-PACKAGE_FILE = ../HFLAP022.ZIP
+PACKAGE_FILE = ../HFLAP023.ZIP
 
 # ヘッダ検索パス
 INCLUDE_FLAGS = -I${XDEV68K_DIR}/include/xc -I${XDEV68K_DIR}/include/xdev68k
