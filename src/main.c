@@ -426,7 +426,8 @@ try:
   }
 
   // check frequency
-  if (flac_decoder.sample_rate != 44100 && flac_decoder.sample_rate != 48000) {
+  if (flac_decoder.sample_rate != 44100 && flac_decoder.sample_rate != 48000 &&
+      flac_decoder.sample_rate != 88200 && flac_decoder.sample_rate != 96000) {
     strcpy(error_mes, cp932rsc_flac_freq_error);
     goto catch;
   }
@@ -557,9 +558,16 @@ try:
 
       // decode flac stream into pcm data buffer as much as possible
       size_t decoded_bytes;
-      if (flac_decode_full(&flac_decoder, ct->buffer, CHAIN_TABLE_EX_BUFFER_BYTES, &decoded_bytes) != 0) {
-        strcpy(error_mes, cp932rsc_flac_decode_error);
-        goto catch;      
+      if (flac_decoder.sample_rate <= 48000) {
+        if (flac_decode_full(&flac_decoder, ct->buffer, CHAIN_TABLE_EX_BUFFER_BYTES, &decoded_bytes) != 0) {
+          strcpy(error_mes, cp932rsc_flac_decode_error);
+          goto catch;      
+        }
+      } else {
+        if (flac_decode_half(&flac_decoder, ct->buffer, CHAIN_TABLE_EX_BUFFER_BYTES, &decoded_bytes) != 0) {
+          strcpy(error_mes, cp932rsc_flac_decode_error);
+          goto catch;      
+        }        
       }
 
       // end of flac?
@@ -623,7 +631,9 @@ try:
                         pcm_freq == 24000 && pcm_channels == 2 ? 0x1b :
                         pcm_freq == 32000 && pcm_channels == 2 ? 0x1c :
                         pcm_freq == 44100 && pcm_channels == 2 ? 0x1d : 
-                        pcm_freq == 48000 && pcm_channels == 2 ? 0x1e : 0x1d;
+                        pcm_freq == 48000 && pcm_channels == 2 ? 0x1e : 
+                        pcm_freq == 88200 && pcm_channels == 2 ? 0x1d :
+                        pcm_freq == 96000 && pcm_channels == 2 ? 0x1e : 0x1d;
 
   uint32_t pcm8pp_channel_mode = ( pcm8pp_volume << 16 ) | ( pcm8pp_freq << 8 ) | pcm8pp_pan;
 
@@ -797,9 +807,16 @@ try:
 
         // decode flac stream into pcm buffer
         size_t decoded_bytes;
-        if (flac_decode_full(&flac_decoder, ct->buffer, CHAIN_TABLE_EX_BUFFER_BYTES, &decoded_bytes) != 0) {
-          strcpy(error_mes, cp932rsc_flac_decode_error);
-          goto catch;      
+        if (flac_decoder.sample_rate <= 48000) {
+          if (flac_decode_full(&flac_decoder, ct->buffer, CHAIN_TABLE_EX_BUFFER_BYTES, &decoded_bytes) != 0) {
+            strcpy(error_mes, cp932rsc_flac_decode_error);
+            goto catch;      
+          }
+        } else {
+          if (flac_decode_half(&flac_decoder, ct->buffer, CHAIN_TABLE_EX_BUFFER_BYTES, &decoded_bytes) != 0) {
+            strcpy(error_mes, cp932rsc_flac_decode_error);
+            goto catch;      
+          }          
         }
 
         // end of flac?

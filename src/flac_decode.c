@@ -450,6 +450,78 @@ exit:
 }
 
 //
+//  decode flac stream (half rate)
+//
+int32_t flac_decode_half(FLAC_DECODE_HANDLE* decode, int16_t* decode_buffer, size_t decode_buffer_bytes, size_t* decoded_bytes) {
+
+  // default return code
+  int32_t rc = -1;
+
+  // decode counter
+  int32_t decode_ofs = 0;
+
+  for (;;) {
+
+     uint32_t sample_len = decode->samples_len;
+
+    if (decode->pending_len > 0) {
+
+      sample_len = decode->pending_len;
+      decode->pending_len = 0;
+
+    } else {
+
+      uint32_t used_bytes = decode->flac_data_len - decode->flac_data_pos;
+      
+      if (fx_flac_process(decode->fx_flac, 
+                          &(decode->flac_data[decode->flac_data_pos]), 
+                          &used_bytes, 
+                          decode->samples, 
+                          &sample_len) == FLAC_ERR) goto exit;
+
+      decode->flac_data_pos += used_bytes;
+
+    }
+
+    // end of FLAC
+    if (sample_len == 0) break;
+
+    if (decode_ofs * sizeof(int16_t) + sample_len * decode->channels * sizeof(int16_t) / 2 > decode_buffer_bytes) {
+      // no more buffer space to write
+      decode->pending_len = sample_len;
+      break;
+    }
+
+    if (decode->bps == 16) {
+
+      for (int32_t i = 0; i < sample_len; i += 4) {
+        decode_buffer[ decode_ofs++ ] = *((int16_t*)&(decode->samples[i]));
+        decode_buffer[ decode_ofs++ ] = *((int16_t*)&(decode->samples[i+1]));
+      }
+
+    } else if (decode->bps == 24) {
+
+      for (int32_t i = 0; i < sample_len; i += 4) {
+        decode_buffer[ decode_ofs++ ] = *((int16_t*)&(decode->samples[i]));
+        decode_buffer[ decode_ofs++ ] = *((int16_t*)&(decode->samples[i+1]));
+      }
+
+    }
+
+  }
+
+  // success
+  rc = 0;
+
+exit:
+
+  // push resampled count
+  *decoded_bytes = decode_ofs * sizeof(int16_t);
+
+  return rc;
+}
+
+//
 //  decode flac stream with resampling
 //
 int32_t flac_decode_resample(FLAC_DECODE_HANDLE* decode, int16_t* decode_buffer, size_t decode_buffer_bytes, int16_t resample_freq, size_t* decoded_bytes) {
