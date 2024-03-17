@@ -562,7 +562,7 @@ int32_t flac_decode_resample(FLAC_DECODE_HANDLE* decode, int16_t* decode_buffer,
     // end of FLAC
     if (sample_len == 0) break;
 
-    if (decode_ofs * sizeof(int16_t) + sample_len * sizeof(int16_t) > decode_buffer_bytes) {
+    if (decode_ofs * sizeof(int16_t) + sample_len * sizeof(int16_t) / 2 > decode_buffer_bytes) {
       // no more buffer space to write
       decode->pending_len = sample_len;
       //printf("no more buffer space.\n");
