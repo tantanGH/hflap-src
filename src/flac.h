@@ -287,9 +287,15 @@ FX_EXPORT int64_t fx_flac_get_streaminfo(const fx_flac_t *inst,
  * will return immediately; only the data up to the point causing the transition
  * has been read.
  */
+#ifdef HFLAP
+FX_EXPORT fx_flac_state_t fx_flac_process(fx_flac_t *inst, const uint8_t *in,
+                                          uint32_t *in_len, int16_t *out,
+                                          uint32_t *out_len);
+#else
 FX_EXPORT fx_flac_state_t fx_flac_process(fx_flac_t *inst, const uint8_t *in,
                                           uint32_t *in_len, int32_t *out,
                                           uint32_t *out_len);
+#endif
 
 #ifdef __cplusplus
 }

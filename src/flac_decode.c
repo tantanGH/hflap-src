@@ -388,124 +388,23 @@ int32_t flac_decode_full(FLAC_DECODE_HANDLE* decode, int16_t* decode_buffer, siz
 
   for (;;) {
 
-     uint32_t sample_len = decode->samples_len;
-
-    if (decode->pending_len > 0) {
-
-      sample_len = decode->pending_len;
-      decode->pending_len = 0;
-
-    } else {
-
-      uint32_t used_bytes = decode->flac_data_len - decode->flac_data_pos;
+    uint32_t sample_len = decode->samples_len;
+    uint32_t used_bytes = decode->flac_data_len - decode->flac_data_pos;
       
-      if (fx_flac_process(decode->fx_flac, 
-                          &(decode->flac_data[decode->flac_data_pos]), 
-                          &used_bytes, 
-                          decode->samples, 
-                          &sample_len) == FLAC_ERR) goto exit;
+    if (fx_flac_process(decode->fx_flac, 
+                        &(decode->flac_data[decode->flac_data_pos]), 
+                        &used_bytes, 
+                        &(decode_buffer[decode_ofs]), 
+                        &sample_len) == FLAC_ERR) goto exit;
 
-      decode->flac_data_pos += used_bytes;
-
-    }
+    decode->flac_data_pos += used_bytes;
+    decode_ofs += sample_len;
 
     // end of FLAC
     if (sample_len == 0) break;
 
     if (decode_ofs * sizeof(int16_t) + sample_len * decode->channels * sizeof(int16_t) > decode_buffer_bytes) {
-      // no more buffer space to write
-      decode->pending_len = sample_len;
       break;
-    }
-
-    if (decode->bps == 16) {
-
-      for (int32_t i = 0; i < sample_len; i += 2) {
-        decode_buffer[ decode_ofs++ ] = *((int16_t*)&(decode->samples[i]));
-        decode_buffer[ decode_ofs++ ] = *((int16_t*)&(decode->samples[i+1]));
-      }
-
-    } else if (decode->bps == 24) {
-
-      for (int32_t i = 0; i < sample_len; i += 2) {
-//        decode_buffer[ decode_ofs++ ] = decode->samples[i] / 65536;
-//        decode_buffer[ decode_ofs++ ] = decode->samples[i + 1] / 65536;
-        decode_buffer[ decode_ofs++ ] = *((int16_t*)&(decode->samples[i]));
-        decode_buffer[ decode_ofs++ ] = *((int16_t*)&(decode->samples[i+1]));
-      }
-
-    }
-
-  }
-
-  // success
-  rc = 0;
-
-exit:
-
-  // push resampled count
-  *decoded_bytes = decode_ofs * sizeof(int16_t);
-
-  return rc;
-}
-
-//
-//  decode flac stream (half rate)
-//
-int32_t flac_decode_half(FLAC_DECODE_HANDLE* decode, int16_t* decode_buffer, size_t decode_buffer_bytes, size_t* decoded_bytes) {
-
-  // default return code
-  int32_t rc = -1;
-
-  // decode counter
-  int32_t decode_ofs = 0;
-
-  for (;;) {
-
-     uint32_t sample_len = decode->samples_len;
-
-    if (decode->pending_len > 0) {
-
-      sample_len = decode->pending_len;
-      decode->pending_len = 0;
-
-    } else {
-
-      uint32_t used_bytes = decode->flac_data_len - decode->flac_data_pos;
-      
-      if (fx_flac_process(decode->fx_flac, 
-                          &(decode->flac_data[decode->flac_data_pos]), 
-                          &used_bytes, 
-                          decode->samples, 
-                          &sample_len) == FLAC_ERR) goto exit;
-
-      decode->flac_data_pos += used_bytes;
-
-    }
-
-    // end of FLAC
-    if (sample_len == 0) break;
-
-    if (decode_ofs * sizeof(int16_t) + sample_len * decode->channels * sizeof(int16_t) / 2 > decode_buffer_bytes) {
-      // no more buffer space to write
-      decode->pending_len = sample_len;
-      break;
-    }
-
-    if (decode->bps == 16) {
-
-      for (int32_t i = 0; i < sample_len; i += 4) {
-        decode_buffer[ decode_ofs++ ] = *((int16_t*)&(decode->samples[i]));
-        decode_buffer[ decode_ofs++ ] = *((int16_t*)&(decode->samples[i+1]));
-      }
-
-    } else if (decode->bps == 24) {
-
-      for (int32_t i = 0; i < sample_len; i += 4) {
-        decode_buffer[ decode_ofs++ ] = *((int16_t*)&(decode->samples[i]));
-        decode_buffer[ decode_ofs++ ] = *((int16_t*)&(decode->samples[i+1]));
-      }
-
     }
 
   }
@@ -535,69 +434,37 @@ int32_t flac_decode_resample(FLAC_DECODE_HANDLE* decode, int16_t* decode_buffer,
   for (;;) {
 
     uint32_t sample_len = decode->samples_len;
+    uint32_t used_bytes = decode->flac_data_len - decode->flac_data_pos;
 
-    if (decode->pending_len > 0) {
+    if (fx_flac_process(decode->fx_flac, 
+                        &(decode->flac_data[decode->flac_data_pos]), 
+                        &used_bytes, 
+                        decode->samples, 
+                        &sample_len) == FLAC_ERR) {
+                          goto exit;
+                        }
 
-      sample_len = decode->pending_len;
-      decode->pending_len = 0;
-
-    } else {
-
-      uint32_t used_bytes = decode->flac_data_len - decode->flac_data_pos;
-
-      if (fx_flac_process(decode->fx_flac, 
-                          &(decode->flac_data[decode->flac_data_pos]), 
-                          &used_bytes, 
-                          decode->samples, 
-                          &sample_len) == FLAC_ERR) {
-                            //printf("detected FLAC_ERR\n");
-                            goto exit;
-                          }
-
-      decode->flac_data_pos += used_bytes;
-      //printf("%d %d %d\n", decode->flac_data_pos, used_bytes, sample_len);
-
-    }
+    decode->flac_data_pos += used_bytes;
 
     // end of FLAC
     if (sample_len == 0) break;
 
-    if (decode_ofs * sizeof(int16_t) + sample_len * sizeof(int16_t) / 2 > decode_buffer_bytes) {
-      // no more buffer space to write
-      decode->pending_len = sample_len;
-      //printf("no more buffer space.\n");
-      break;
+    uint32_t adjusted_sample_rate = decode->sample_rate > 48000 ? decode->sample_rate / 2 : decode->sample_rate;
+    for (int32_t i = 0; i < sample_len; i += 2) {
+      // down sampling
+      decode->resample_counter += resample_freq;
+      if (decode->resample_counter < adjusted_sample_rate) {
+        continue;
+      }
+      int16_t lch = decode->samples[i] / 16;      // 12bit
+      int16_t rch = decode->samples[i+1] / 16;    // 12bit
+      decode_buffer[ decode_ofs++ ] = (lch + rch) / 2;
+      decode->resample_counter -= adjusted_sample_rate;
     }
 
-    if (decode->bps == 16) {
-
-      for (int32_t i = 0; i < sample_len; i += 2) {
-        // down sampling
-        decode->resample_counter += resample_freq;
-        if (decode->resample_counter < decode->sample_rate) {
-          continue;
-        }
-        int16_t lch = *((int16_t*)&(decode->samples[i])) / 16;      // 12bit
-        int16_t rch = *((int16_t*)&(decode->samples[i+1])) / 16;    // 12bit
-        decode_buffer[ decode_ofs++ ] = (lch + rch) / 2;
-        decode->resample_counter -= decode->sample_rate;
-      }
-
-    } else if (decode->bps == 24) {
-
-      for (int32_t i = 0; i < sample_len; i += 2) {
-        // down sampling
-        decode->resample_counter += resample_freq;
-        if (decode->resample_counter < decode->sample_rate) {
-          continue;
-        }
-        int16_t lch = *((int16_t*)&(decode->samples[i])) / 16;      // 12bit
-        int16_t rch = *((int16_t*)&(decode->samples[i+1])) / 16;    // 12bit
-        decode_buffer[ decode_ofs++ ] = (lch + rch) / 2;
-//        decode_buffer[ decode_ofs++ ] = (decode->samples[i] / 65536 / 16 + decode->samples[i + 1] / 65536 / 16) / 2;
-        decode->resample_counter -= decode->sample_rate;
-      }
-
+    if (decode_ofs * sizeof(int16_t) + sample_len * sizeof(int16_t) / (decode->sample_rate > 48000 ? 4 : 2) > decode_buffer_bytes) {
+      // no more buffer space to write
+      break;
     }
 
   }
