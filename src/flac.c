@@ -21,7 +21,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#ifdef XDEV68K
+#ifdef HFLAP
 #include <stdio.h>
 #include <stdlib.h>
 #include "flac.h"
@@ -35,7 +35,7 @@
 #define FX_FLAC_NO_CRC
 #endif
 
-#ifdef XDEV68K
+#ifdef HFLAP
 #define FX_FLAC_NO_CRC
 #endif
 
@@ -1436,7 +1436,11 @@ static bool _fx_flac_process_search_frame(fx_flac_t *inst) {
 	return true;
 }
 
+#ifdef HFLAP
+static inline bool _fx_flac_process_in_frame(fx_flac_t *inst) {
+#else
 static bool _fx_flac_process_in_frame(fx_flac_t *inst) {
+#endif
 	int64_t tmp_; /* Used by the READ_BITS macro */
 	fx_flac_frame_header_t *fh = inst->frame_header;
 	fx_flac_subframe_header_t *sfh = inst->subframe_header;
@@ -1732,6 +1736,7 @@ static bool _fx_flac_process_in_frame(fx_flac_t *inst) {
 					break;
 			}
 
+#ifndef HFLAP
 			/* Shift the output such that the resulting int32 stream can be
 			   played back. */
 			uint8_t shift = 32U - fh->sample_size;
@@ -1743,6 +1748,7 @@ static bool _fx_flac_process_in_frame(fx_flac_t *inst) {
 					}
 				}
 			}
+#endif
 
 			/* We're done decoding this frame! Notify the outer loop! */
 			inst->blk_cur = 0U; /* Reset the read cursor */
@@ -1757,35 +1763,109 @@ static bool _fx_flac_process_in_frame(fx_flac_t *inst) {
 	return true;
 }
 
+#ifdef HFLAP
+static inline bool _fx_flac_process_decoded_frame(fx_flac_t *inst, int16_t *out,
+                                           uint32_t *out_len) {
+#else
 static bool _fx_flac_process_decoded_frame(fx_flac_t *inst, int32_t *out,
                                            uint32_t *out_len) {
+#endif
 	/* Fetch the current stream and frame info. */
 	const fx_flac_frame_header_t *fh = inst->frame_header;
 
 	/* Fetch channel count and number of samples left to write */
+#ifdef HFLAP
+  const uint8_t cc = 2;
+#else
 	const uint8_t cc = fh->channel_count;
+#endif
 	uint32_t n_smpls_rem =
 	    (fh->block_size - inst->blk_cur - 1U) * cc + (cc - inst->chan_cur);
 
+#ifndef HFLAP
 	/* Truncate to the actually available space. */
 	if (n_smpls_rem > *out_len) {
 		n_smpls_rem = *out_len;
 	}
+#endif
 
+#ifdef HFLAP
 	/* Interlace the decoded samples in the output array */
 	uint32_t tar = 0U; /* Number of samples written. */
-	while (tar < n_smpls_rem) {
-		/* Write to the output buffer */
-		out[tar] = inst->blkbuf[inst->chan_cur][inst->blk_cur];
+  if (fh->sample_rate > 48000) {
+    n_smpls_rem /= 2;
+    if (fh->sample_size == 16) {
+      while (tar < n_smpls_rem) {
+        /* Write to the output buffer */
+        out[tar] = inst->blkbuf[inst->chan_cur][inst->blk_cur];   // 32bit(16bit) to 16bit cast
 
-		/* Advance the read and write cursors */
-		inst->chan_cur++;
-		if (inst->chan_cur == cc) {
-			inst->chan_cur = 0U;
-			inst->blk_cur++;
-		}
-		tar++;
-	}
+        /* Advance the read and write cursors */
+        inst->chan_cur++;
+        if (inst->chan_cur == cc) {
+          inst->chan_cur = 0U;
+          inst->blk_cur += 2;
+        }
+        tar++;
+      }
+    } else if (fh->sample_size == 24) {
+      while (tar < n_smpls_rem) {
+        /* Write to the output buffer */
+        out[tar] = inst->blkbuf[inst->chan_cur][inst->blk_cur] / 256;   // 32bit(24bit) to 16bit cast
+
+        /* Advance the read and write cursors */
+        inst->chan_cur++;
+        if (inst->chan_cur == cc) {
+          inst->chan_cur = 0U;
+          inst->blk_cur += 2;
+        }
+        tar++;
+      }
+    }
+  } else {
+    if (fh->sample_size == 16) {
+      while (tar < n_smpls_rem) {
+        /* Write to the output buffer */
+        out[tar] = inst->blkbuf[inst->chan_cur][inst->blk_cur];   // 32bit(16bit) to 16bit cast
+
+        /* Advance the read and write cursors */
+        inst->chan_cur++;
+        if (inst->chan_cur == cc) {
+          inst->chan_cur = 0U;
+          inst->blk_cur++;
+        }
+        tar++;
+      }
+    } else if (fh->sample_size == 24) {
+      while (tar < n_smpls_rem) {
+        /* Write to the output buffer */
+        out[tar] = inst->blkbuf[inst->chan_cur][inst->blk_cur] / 256;   // 32bit(24bit) to 16bit cast
+
+        /* Advance the read and write cursors */
+        inst->chan_cur++;
+        if (inst->chan_cur == cc) {
+          inst->chan_cur = 0U;
+          inst->blk_cur++;
+        }
+        tar++;
+      }
+    }
+  }
+#else
+	/* Interlace the decoded samples in the output array */
+	uint32_t tar = 0U; /* Number of samples written. */
+  while (tar < n_smpls_rem) {
+    /* Write to the output buffer */
+    out[tar] = inst->blkbuf[inst->chan_cur][inst->blk_cur];
+
+    /* Advance the read and write cursors */
+    inst->chan_cur++;
+    if (inst->chan_cur == cc) {
+      inst->chan_cur = 0U;
+      inst->blk_cur++;
+    }
+    tar++;
+  }
+#endif
 
 	/* Inform the caller about the number of samples written */
 	*out_len = tar;
@@ -1948,9 +2028,16 @@ int64_t fx_flac_get_streaminfo(fx_flac_t const *inst,
 	}
 }
 
+#ifdef HFLAP
+fx_flac_state_t fx_flac_process(fx_flac_t *inst, const uint8_t *in,
+                                uint32_t *in_len, int16_t *out,
+                                uint32_t *out_len) {
+#else
 fx_flac_state_t fx_flac_process(fx_flac_t *inst, const uint8_t *in,
                                 uint32_t *in_len, int32_t *out,
                                 uint32_t *out_len) {
+#endif
+
 	inst = (fx_flac_t *)FX_ALIGN_ADDR(inst);
 
 	/* Set the current bytestream source to the provided input buffer */
@@ -2004,11 +2091,13 @@ fx_flac_state_t fx_flac_process(fx_flac_t *inst, const uint8_t *in,
 				done = !_fx_flac_process_in_frame(inst);
 				break;
 			case FLAC_DECODED_FRAME:
+#ifndef HFLAP
 				/* If no output buffers are given, just discard the data. */
 				if (!out || !out_len) {
 					inst->state = FLAC_END_OF_FRAME;
 					break;
 				}
+#endif
 				out_len_ = *out_len;
 				done = !_fx_flac_process_decoded_frame(inst, out, &out_len_);
 				break;
@@ -2029,4 +2118,3 @@ fx_flac_state_t fx_flac_process(fx_flac_t *inst, const uint8_t *in,
 	/* Return the current state */
 	return inst->state;
 }
-

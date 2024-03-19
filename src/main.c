@@ -550,7 +550,8 @@ try:
       memset(ct, 0, sizeof(CHAIN_TABLE_EX));
 
       // allocate pcm data buffer for this chain table entry
-      ct->buffer = himem_malloc(CHAIN_TABLE_EX_BUFFER_BYTES, use_high_memory);
+      size_t buffer_bytes = flac_decoder.sample_rate > 48000 ? CHAIN_TABLE_EX_BUFFER_BYTES * 2 : CHAIN_TABLE_EX_BUFFER_BYTES;
+      ct->buffer = himem_malloc(buffer_bytes, use_high_memory);
       if (ct->buffer == NULL) {
         strcpy(error_mes, cp932rsc_himem_shortage);
         goto catch;
@@ -559,12 +560,13 @@ try:
       // decode flac stream into pcm data buffer as much as possible
       size_t decoded_bytes;
       if (flac_decoder.sample_rate <= 48000) {
-        if (flac_decode_full(&flac_decoder, ct->buffer, CHAIN_TABLE_EX_BUFFER_BYTES, &decoded_bytes) != 0) {
+        if (flac_decode_full(&flac_decoder, ct->buffer, buffer_bytes, &decoded_bytes) != 0) {
           strcpy(error_mes, cp932rsc_flac_decode_error);
           goto catch;      
         }
       } else {
-        if (flac_decode_half(&flac_decoder, ct->buffer, CHAIN_TABLE_EX_BUFFER_BYTES, &decoded_bytes) != 0) {
+        if (flac_decode_full(&flac_decoder, ct->buffer, buffer_bytes, &decoded_bytes) != 0) {
+//        if (flac_decode_half(&flac_decoder, ct->buffer, buffer_bytes, &decoded_bytes) != 0) {
           strcpy(error_mes, cp932rsc_flac_decode_error);
           goto catch;      
         }        
@@ -799,7 +801,8 @@ try:
         memset(ct, 0, sizeof(CHAIN_TABLE_EX));
 
         // allocate pcm buffer for this chain table entry
-        ct->buffer = himem_malloc(CHAIN_TABLE_EX_BUFFER_BYTES, use_high_memory);
+        size_t buffer_bytes = flac_decoder.sample_rate > 48000 ? CHAIN_TABLE_EX_BUFFER_BYTES * 2 : CHAIN_TABLE_EX_BUFFER_BYTES;
+        ct->buffer = himem_malloc(buffer_bytes, use_high_memory);
         if (ct->buffer == NULL) {
           strcpy(error_mes, cp932rsc_himem_shortage);
           goto catch;
@@ -808,12 +811,13 @@ try:
         // decode flac stream into pcm buffer
         size_t decoded_bytes;
         if (flac_decoder.sample_rate <= 48000) {
-          if (flac_decode_full(&flac_decoder, ct->buffer, CHAIN_TABLE_EX_BUFFER_BYTES, &decoded_bytes) != 0) {
+          if (flac_decode_full(&flac_decoder, ct->buffer, buffer_bytes, &decoded_bytes) != 0) {
             strcpy(error_mes, cp932rsc_flac_decode_error);
             goto catch;      
           }
         } else {
-          if (flac_decode_half(&flac_decoder, ct->buffer, CHAIN_TABLE_EX_BUFFER_BYTES, &decoded_bytes) != 0) {
+          if (flac_decode_full(&flac_decoder, ct->buffer, buffer_bytes, &decoded_bytes) != 0) {
+//          if (flac_decode_half(&flac_decoder, ct->buffer, buffer_bytes, &decoded_bytes) != 0) {
             strcpy(error_mes, cp932rsc_flac_decode_error);
             goto catch;      
           }          

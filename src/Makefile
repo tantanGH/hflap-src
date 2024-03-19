@@ -25,7 +25,7 @@ TARGET_FILE = HFLAP.X
 DOCUMENT_FILE = HFLAP.DOC
 
 # Distribution package 
-PACKAGE_FILE = ../HFLAP023.ZIP
+PACKAGE_FILE = ../HFLAP024.ZIP
 
 # ヘッダ検索パス
 INCLUDE_FLAGS = -I${XDEV68K_DIR}/include/xc -I${XDEV68K_DIR}/include/xdev68k
@@ -33,7 +33,7 @@ INCLUDE_FLAGS = -I${XDEV68K_DIR}/include/xc -I${XDEV68K_DIR}/include/xdev68k
 # コンパイルフラグ
 COMMON_FLAGS = -m68030 -O3 $(INCLUDE_FLAGS) -z-stack=8192
 CFLAGS = $(COMMON_FLAGS) -Wno-builtin-declaration-mismatch -fcall-used-d2 -fcall-used-a2 \
-    -fexec-charset=cp932 -fverbose-asm -fno-defer-pop -DXDEV68K
+    -fexec-charset=cp932 -fverbose-asm -fno-defer-pop -DHFLAP
 
 # *.c ソースファイル
 C_SRCS = himem.c crtc.c pcm8a.c pcm8pp.c flac.c flac_decode.c picojpeg.c jpeg_decode.c utf8_cp932.c main.c
