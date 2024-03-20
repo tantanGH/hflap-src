@@ -388,8 +388,8 @@ int32_t flac_decode_full(FLAC_DECODE_HANDLE* decode, int16_t* decode_buffer, siz
 
   for (;;) {
 
-    uint32_t sample_len = decode->samples_len;
     uint32_t used_bytes = decode->flac_data_len - decode->flac_data_pos;
+    uint32_t sample_len = (decode_buffer_bytes / sizeof(int16_t)) - decode_ofs;
       
     if (fx_flac_process(decode->fx_flac, 
                         &(decode->flac_data[decode->flac_data_pos]), 
@@ -433,16 +433,14 @@ int32_t flac_decode_resample(FLAC_DECODE_HANDLE* decode, int16_t* decode_buffer,
 
   for (;;) {
 
-    uint32_t sample_len = decode->samples_len;
     uint32_t used_bytes = decode->flac_data_len - decode->flac_data_pos;
+    uint32_t sample_len = decode->samples_len;
 
     if (fx_flac_process(decode->fx_flac, 
                         &(decode->flac_data[decode->flac_data_pos]), 
                         &used_bytes, 
                         decode->samples, 
-                        &sample_len) == FLAC_ERR) {
-                          goto exit;
-                        }
+                        &sample_len) == FLAC_ERR) goto exit;
 
     decode->flac_data_pos += used_bytes;
 

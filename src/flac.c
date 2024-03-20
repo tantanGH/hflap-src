@@ -1774,11 +1774,7 @@ static bool _fx_flac_process_decoded_frame(fx_flac_t *inst, int32_t *out,
 	const fx_flac_frame_header_t *fh = inst->frame_header;
 
 	/* Fetch channel count and number of samples left to write */
-#ifdef HFLAP
-  const uint8_t cc = 2;
-#else
 	const uint8_t cc = fh->channel_count;
-#endif
 	uint32_t n_smpls_rem =
 	    (fh->block_size - inst->blk_cur - 1U) * cc + (cc - inst->chan_cur);
 
@@ -1791,34 +1787,38 @@ static bool _fx_flac_process_decoded_frame(fx_flac_t *inst, int32_t *out,
 
 #ifdef HFLAP
 	/* Interlace the decoded samples in the output array */
-	uint32_t tar = 0U; /* Number of samples written. */
-  if (fh->sample_rate > 48000) {
-    n_smpls_rem /= 2;
+	register uint32_t tar = 0U; /* Number of samples written. */
+  //printf("n_smpls_rem=%d\n",n_smpls_rem);
+  if (fh->sample_rate > 48000 && inst->chan_cur == 0) {
     if (fh->sample_size == 16) {
-      while (tar < n_smpls_rem) {
-        /* Write to the output buffer */
-        out[tar] = inst->blkbuf[inst->chan_cur][inst->blk_cur];   // 32bit(16bit) to 16bit cast
-
-        /* Advance the read and write cursors */
-        inst->chan_cur++;
-        if (inst->chan_cur == cc) {
-          inst->chan_cur = 0U;
-          inst->blk_cur += 2;
-        }
-        tar++;
+      register size_t loop = n_smpls_rem / 4;
+      while (tar < loop) {
+        out[tar++] = inst->blkbuf[0][inst->blk_cur];   // 32bit(16bit) to 16bit cast
+        out[tar++] = inst->blkbuf[1][inst->blk_cur];   // 32bit(16bit) to 16bit cast
+        inst->blk_cur += 2;
       }
     } else if (fh->sample_size == 24) {
-      while (tar < n_smpls_rem) {
-        /* Write to the output buffer */
-        out[tar] = inst->blkbuf[inst->chan_cur][inst->blk_cur] / 256;   // 32bit(24bit) to 16bit cast
-
-        /* Advance the read and write cursors */
-        inst->chan_cur++;
-        if (inst->chan_cur == cc) {
-          inst->chan_cur = 0U;
-          inst->blk_cur += 2;
-        }
-        tar++;
+      register size_t loop = n_smpls_rem / 4;
+      while (tar < loop) {
+        out[tar++] = inst->blkbuf[0][inst->blk_cur] / 256;   // 32bit(24bit) to 16bit cast
+        out[tar++] = inst->blkbuf[1][inst->blk_cur] / 256;   // 32bit(24bit) to 16bit cast
+        inst->blk_cur += 2;
+      }
+    }
+  } else if (inst->chan_cur == 0) {
+    if (fh->sample_size == 16) {
+      register size_t loop = n_smpls_rem / 2;
+      while (tar < loop) {
+        out[tar++] = inst->blkbuf[0][inst->blk_cur];   // 32bit(16bit) to 16bit cast
+        out[tar++] = inst->blkbuf[1][inst->blk_cur];   // 32bit(16bit) to 16bit cast
+        inst->blk_cur++;
+      }
+    } else if (fh->sample_size == 24) {
+      register size_t loop = n_smpls_rem / 2;
+      while (tar < loop) {
+        out[tar++] = inst->blkbuf[0][inst->blk_cur] / 256;   // 32bit(24bit) to 16bit cast
+        out[tar++] = inst->blkbuf[1][inst->blk_cur] / 256;   // 32bit(24bit) to 16bit cast
+        inst->blk_cur++;
       }
     }
   } else {
