@@ -21,7 +21,8 @@ extern uint8_t cp932rsc_flac_freq_error[];
 extern uint8_t cp932rsc_flac_channel_error[];
 extern uint8_t cp932rsc_flac_decode_error[];
 extern uint8_t cp932rsc_buffer_underrun[];
-extern uint8_t cp932rsc_mpu_type[];
+extern uint8_t cp932rsc_mpu_type_68060[];
+extern uint8_t cp932rsc_mpu_type_68030[];
 extern uint8_t cp932rsc_not_flac_file[];
 extern uint8_t cp932rsc_half_rate_mercury35[];
 

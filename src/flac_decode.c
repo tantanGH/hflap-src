@@ -6,6 +6,10 @@
 #include "jpeg_decode.h"
 #include "flac_decode.h"
 
+#ifdef __VERBOSE__
+#include <iocslib.h>
+#endif
+
 //
 //  utf-8 to cp932
 //
@@ -386,6 +390,10 @@ int32_t flac_decode_full(FLAC_DECODE_HANDLE* decode, int16_t* decode_buffer, siz
   // decode counter
   int32_t decode_ofs = 0;
 
+#ifdef __VERBOSE__
+  uint32_t t0 = ONTIME();
+#endif
+
   for (;;) {
 
     uint32_t used_bytes = decode->flac_data_len - decode->flac_data_pos;
@@ -416,6 +424,11 @@ exit:
 
   // push resampled count
   *decoded_bytes = decode_ofs * sizeof(int16_t);
+
+#ifdef __VERBOSE__
+  uint32_t t1 = ONTIME();
+  printf("%4.2f samples/sec\n",decode_ofs * 100.0 / 2.0 / (t1 - t0));
+#endif
 
   return rc;
 }
