@@ -32,17 +32,17 @@ INCLUDE_FLAGS = -I${XDEV68K_DIR}/include/xc -I${XDEV68K_DIR}/include/xdev68k
 
 # コンパイルフラグ
 _COMMON_FLAGS = -m68060 -msoft-float -O3 $(INCLUDE_FLAGS)
-_COMMON_FLAGS = -m68060 -msoft-float -O3 \
+COMMON_FLAGS = -m68060 -msoft-float -O3 \
     -fomit-frame-pointer -fstrict-aliasing \
     -finline-functions -finline-limit=10000 \
     -falign-functions=16 -falign-loops=16 \
     -fno-unroll-loops -fno-peel-loops -fno-builtin \
     ${INCLUDE_FLAGS}
 _COMMON_FLAGS = -m68060 -Os -msoft-float $(INCLUDE_FLAGS)
-COMMON_FLAGS = -m68060 -msoft-float -O3 $(INCLUDE_FLAGS)
+_COMMON_FLAGS = -m68060 -msoft-float -O3 $(INCLUDE_FLAGS)
 
 CFLAGS = $(COMMON_FLAGS) -Wno-builtin-declaration-mismatch -fcall-used-d2 -fcall-used-a2 \
-    -fexec-charset=cp932 -fverbose-asm -DHFLAP -D__VERBOSE__
+    -fexec-charset=cp932 -fverbose-asm -DHFLAP -D__NO_VERBOSE__
 
 # *.c ソースファイル
 C_SRCS = himem.c crtc.c pcm8a.c pcm8pp.c flac.c flac_decode.c picojpeg.c jpeg_decode.c utf8_cp932.c main.c

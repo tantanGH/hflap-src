@@ -962,32 +962,25 @@ static inline void _fx_flac_restore_lpc_signal(
             blk[i] += accu >> lpc_shift;
         }
     } else {
-		/* 24bit: サンプルを上位16bit/下位8bitに分割して32bit演算 */
+		/* 24bit: サンプルを上位12bit/下位12bitに分割して32bit演算 */
 		for (uint32_t i = lpc_order; i < blk_size; i++) {
 			const int32_t *p = &blk[i - 1];
 			const int32_t *c = lpc_coeffs;
 			uint32_t j = lpc_order;
 
-			/* 上位16bit部分: sample >> 8 して係数と掛ける */
 			int32_t accu_hi = 0;
-			while (j--) {
-				accu_hi += (*c++) * ((*p--) >> 8);
-			}
-
-			/* 下位8bit部分: sample & 0xFF して係数と掛ける */
-			p = &blk[i - 1];
-			c = lpc_coeffs;
-			j = lpc_order;
 			int32_t accu_lo = 0;
 			while (j--) {
-				accu_lo += (*c++) * ((*p--) & 0xFF);
+				int32_t cval = *c++;
+				int32_t pval = *p--;
+				accu_hi += cval * (pval >> 12);
+				accu_lo += cval * (pval & 0xFFF);
 			}
 
-			/* 合成: accu_hi は 2^8 倍のスケール */
-			/* accu_hi * 256 + accu_lo が真の積和 */
-			/* >> lpc_shift して blk[i] に加算 */
-			/* オーバーフロー注意: accu_hi << 8 が溢れる可能性 */
-			int32_t result = ((accu_hi << 8) + accu_lo) >> lpc_shift;
+			/* 合成は64bit、ただし乗算ではなくシフトのみ */
+			int32_t result = (int32_t)(
+				(((int64_t)accu_hi << 12) + accu_lo) >> lpc_shift
+			);
 			blk[i] += result;
 		}
     }

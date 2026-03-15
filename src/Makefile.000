@@ -33,7 +33,7 @@ INCLUDE_FLAGS = -I${XDEV68K_DIR}/include/xc -I${XDEV68K_DIR}/include/xdev68k
 # コンパイルフラグ
 COMMON_FLAGS = -m68000 -msoft-float -O3 $(INCLUDE_FLAGS)
 CFLAGS = $(COMMON_FLAGS) -Wno-builtin-declaration-mismatch -fcall-used-d2 -fcall-used-a2 \
-    -fexec-charset=cp932 -fverbose-asm -DHFLAP
+    -fexec-charset=cp932 -fverbose-asm -DHFLAP -D__NO_VERBOSE__
 
 # *.c ソースファイル
 C_SRCS = himem.c crtc.c pcm8a.c pcm8pp.c flac.c flac_decode.c picojpeg.c jpeg_decode.c utf8_cp932.c main.c
