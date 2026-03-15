@@ -158,7 +158,7 @@ static void show_help_message() {
   printf("options:\n");
   printf("     -l[n] ... loop count (none:endless, default:1)\n");
   printf("     -v<n> ... volume (1-15, default:%d)\n", DEFAULT_VOLUME);
-//  printf("     -t<n> ... album art display brightness (1-100, default:off)\n");
+  printf("     -t<n> ... album art display brightness (1-100, default:off)\n");
   printf("     -b<n> ... buffer size [x 64KB] (3-32,default:%d)\n", DEFAULT_BUFFERS);
   printf("     -n    ... no progress bar\n");
   printf("     -s    ... use main memory for file reading (SCSI disk)\n");
@@ -197,12 +197,18 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
   // exit error message
   uint8_t error_mes[ 256 ];
   error_mes[0] = '\0';
-  
-  // check mpu type
-  if (get_mpu_type() < 3) {
-    strcpy(error_mes, cp932rsc_mpu_type);
+
+#ifdef __mc68060__
+  if (get_mpu_type() < 6) {
+    strcpy(error_mes, cp932rsc_mpu_type_68060);
     goto exit;
   }
+#elif __mc68030__
+  if (get_mpu_type() < 3) {
+    strcpy(error_mes, cp932rsc_mpu_type_68030);
+    goto exit;
+  }
+#endif
 
   // parse command line options
   for (int16_t i = 1; i < argc; i++) {
@@ -387,6 +393,9 @@ try:
     size_t read_len = 0; 
     do {
       size_t read_size = (flac_data_size - read_len) < FREAD_CHUNK_BYTES ? (flac_data_size - read_len) : FREAD_CHUNK_BYTES;
+#ifdef __VERBOSE__
+      printf("fread_buffer=%X, read_size=%d, flac_data_size=%d, read_len=%d, FREAD_CHUNK_BYTES=%d\n", fread_buffer, read_size, flac_data_size, read_len, FREAD_CHUNK_BYTES);
+#endif
       size_t len = fread(fread_buffer + read_len, 1, read_size, fp);
       read_len += len;
     } while (read_len < flac_data_size);

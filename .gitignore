@@ -1,4 +1,9 @@
 .DS_Store
 
 src/_build
+src/_build000
+src/_build030
+src/_build060
 src/_work
+
+venv

@@ -18,7 +18,8 @@
   .globl _cp932rsc_flac_channel_error
   .globl _cp932rsc_flac_decode_error
   .globl _cp932rsc_buffer_underrun
-  .globl _cp932rsc_mpu_type
+  .globl _cp932rsc_mpu_type_68060
+  .globl _cp932rsc_mpu_type_68030
   .globl _cp932rsc_not_flac_file
   .globl _cp932rsc_half_rate_mercury35
 
@@ -78,7 +79,10 @@ _cp932rsc_flac_decode_error:
 _cp932rsc_buffer_underrun:
   .dc.b 'バッファアンダーランを検出しました。再バッファリングします。',$00
 
-_cp932rsc_mpu_type:
+_cp932rsc_mpu_type_68060:
+  .dc.b 'このプログラムは68060専用です。',$00
+
+_cp932rsc_mpu_type_68030:
   .dc.b 'このプログラムは68030以上専用です。',$00
 
 _cp932rsc_not_flac_file:

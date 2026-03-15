@@ -1,13 +1,13 @@
 #ifndef __H_HFLAP__
 #define __H_HFLAP__
 
-#define VERSION "0.2.5 (2024/03/20)"
+#define VERSION "0.4.0 (2026/03/15)"
 
 #define MAX_PATH_LEN (256)
 
 #define FREAD_STAGING_BUFFER_BYTES (512*1024)
 
-#define FREAD_CHUNK_BYTES (16*1024*1024)
+#define FREAD_CHUNK_BYTES (8*1024*1024)
 
 #define CHAIN_TABLE_BUFFER_BYTES    (15625*2*1*1)     // 15625Hz 16bit mono 1sec
 #define CHAIN_TABLE_EX_BUFFER_BYTES (48000*2*2*1)     // 48000Hz 16bit stereo 1sec
