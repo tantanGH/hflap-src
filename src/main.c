@@ -160,6 +160,7 @@ static void show_help_message() {
   printf("     -v<n> ... volume (1-15, default:%d)\n", DEFAULT_VOLUME);
   printf("     -t<n> ... album art display brightness (1-100, default:off)\n");
   printf("     -b<n> ... buffer size [x 64KB] (3-32,default:%d)\n", DEFAULT_BUFFERS);
+  printf("     -f    ... full disk read mode (default:continuous disk read)\n");
   printf("     -n    ... no progress bar\n");
   printf("     -s    ... use main memory for file reading (SCSI disk)\n");
   printf("     -h    ... show help message\n");
@@ -190,6 +191,7 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
   int16_t staging_file_read = 0;
   int16_t pic_brightness = 0;
   int16_t quiet_mode = 0;
+  int16_t continuous_read = 1;
 
   // total number of chains
   int32_t num_chains = 0;
@@ -231,6 +233,8 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
         staging_file_read = 1;
       } else if (argv[i][1] == 'n') {
         quiet_mode = 1;
+      } else if (argv[i][1] == 'f') {
+        continuous_read = 0;
       } else if (argv[i][1] == 't') {
         pic_brightness = atoi(argv[i]+2);
         if (pic_brightness < 0 || pic_brightness > 100 || strlen(argv[i]) < 3) {
@@ -364,7 +368,7 @@ try:
   fseek(fp, skip_offset, SEEK_SET);
 
   // allocate file read buffer
-  size_t fread_buffer_len = flac_data_size;
+  size_t fread_buffer_len = continuous_read ? CONTINUOUS_FLAC_BUFFER_BYTES : flac_data_size;
   fread_buffer = himem_malloc(fread_buffer_len, use_high_memory);
   if (fread_buffer == NULL) {
     strcpy(error_mes, cp932rsc_himem_shortage);
@@ -385,23 +389,23 @@ try:
       size_t len = fread(fread_staging_buffer, 1, FREAD_STAGING_BUFFER_BYTES, fp);
       memcpy(fread_buffer + read_len, fread_staging_buffer, len);
       read_len += len;
-    } while (read_len < flac_data_size);
+    } while (read_len < fread_buffer_len);
     himem_free(fread_staging_buffer, 0);
     fread_staging_buffer = NULL;
   } else {
     // direct load to high memory from VDISK/WindrvXM
     size_t read_len = 0; 
     do {
-      size_t read_size = (flac_data_size - read_len) < FREAD_CHUNK_BYTES ? (flac_data_size - read_len) : FREAD_CHUNK_BYTES;
-#ifdef __VERBOSE__
-      printf("fread_buffer=%X, read_size=%d, flac_data_size=%d, read_len=%d, FREAD_CHUNK_BYTES=%d\n", fread_buffer, read_size, flac_data_size, read_len, FREAD_CHUNK_BYTES);
-#endif
+//      size_t read_size = (flac_data_size - read_len) < FREAD_CHUNK_BYTES ? (flac_data_size - read_len) : FREAD_CHUNK_BYTES;
+      size_t read_size = (fread_buffer_len - read_len) < FREAD_CHUNK_BYTES ? (fread_buffer_len - read_len) : FREAD_CHUNK_BYTES;
       size_t len = fread(fread_buffer + read_len, 1, read_size, fp);
       read_len += len;
-    } while (read_len < flac_data_size);
+    } while (read_len < fread_buffer_len);
   }
-  fclose(fp);
-  fp = NULL;
+  if (continuous_read == 0) {
+    fclose(fp);
+    fp = NULL;
+  }
   printf("\r\x1b[0K");
 
   // check eye catch
@@ -412,7 +416,7 @@ try:
 
   // setup flac decoder
   printf("\rLoading tags and picture image...\x1b[0K");
-  if (flac_decode_setup(&flac_decoder, fread_buffer, flac_data_size, pic_brightness, 0) != 0) {
+  if (flac_decode_setup(&flac_decoder, fread_buffer, flac_data_size, continuous_read ? fread_buffer_len : 0, pic_brightness, 0) != 0) {
     strcpy(error_mes, cp932rsc_flac_decoder_setup_error);
     goto catch;
   }
@@ -494,6 +498,44 @@ try:
 
     if (playback_driver == DRIVER_PCM8A) {
 
+      // continuous read
+      if (flac_decoder.continuous_read_len > 0) {
+        size_t remain_len = flac_decoder.continuous_read_len - flac_decoder.continuous_read_pos;
+
+#ifdef __VERBOSE__
+      printf("flac_data_pos=%d, continuous_read_pos=%d, remain_len=%d\n",flac_decoder.flac_data_pos,flac_decoder.continuous_read_pos, remain_len);
+#endif
+
+        if (remain_len <= CONTINUOUS_FLAC_DRAIN_BYTES) {
+          memcpy(fread_buffer, fread_buffer + flac_decoder.continuous_read_pos, remain_len);
+          flac_decoder.continuous_read_len = CONTINUOUS_FLAC_CONTINUE_BYTES * ((flac_decoder.bps > 16 || flac_decoder.sample_rate > 48000) ? 2 : 1);
+          flac_decoder.continuous_read_pos = 0;
+          size_t read_size = flac_decoder.continuous_read_len - remain_len;
+          if ((flac_decoder.flac_data_len - flac_decoder.flac_data_pos) < read_size) {
+            read_size = flac_decoder.flac_data_len - flac_decoder.flac_data_pos;
+            flac_decoder.continuous_read_len = read_size;
+          }
+          if (staging_file_read) {
+            fread_staging_buffer = himem_malloc(read_size, 0);   // allocate in main memory
+            if (fread_staging_buffer == NULL) {
+              strcpy(error_mes, cp932rsc_mainmem_shortage);
+              goto catch;
+            }
+            size_t done = 0;
+            do {
+              size_t len = fread(fread_staging_buffer, 1, read_size - done, fp);
+              if (len == 0) break;
+              memcpy(fread_buffer + remain_len + done, fread_staging_buffer, len);
+              done += len;
+            } while (done < read_size);
+            himem_free(fread_staging_buffer, 0);
+            fread_staging_buffer = NULL;
+          } else {
+            size_t len = fread(fread_buffer + remain_len, 1, read_size, fp);
+          }
+        }
+      }
+
       // allocate a new chain table entry in high memory
       CHAIN_TABLE* ct = (CHAIN_TABLE*)himem_malloc(sizeof(CHAIN_TABLE), use_high_memory);
       if (ct == NULL) {
@@ -547,6 +589,44 @@ try:
     }
 
     if (playback_driver == DRIVER_PCM8PP) {
+
+      // continuous read
+      if (flac_decoder.continuous_read_len > 0) {
+        size_t remain_len = flac_decoder.continuous_read_len - flac_decoder.continuous_read_pos;
+
+#ifdef __VERBOSE__
+      printf("flac_data_pos=%d, continuous_read_pos=%d, remain_len=%d\n",flac_decoder.flac_data_pos,flac_decoder.continuous_read_pos, remain_len);
+#endif
+
+        if (remain_len <= CONTINUOUS_FLAC_DRAIN_BYTES) {
+          memcpy(fread_buffer, fread_buffer + flac_decoder.continuous_read_pos, remain_len);
+          flac_decoder.continuous_read_len = CONTINUOUS_FLAC_CONTINUE_BYTES * ((flac_decoder.bps > 16 || flac_decoder.sample_rate > 48000) ? 2 : 1);
+          flac_decoder.continuous_read_pos = 0;
+          size_t read_size = flac_decoder.continuous_read_len - remain_len;
+          if ((flac_decoder.flac_data_len - flac_decoder.flac_data_pos) < read_size) {
+            read_size = flac_decoder.flac_data_len - flac_decoder.flac_data_pos;
+            flac_decoder.continuous_read_len = read_size;
+          }
+          if (staging_file_read) {
+            fread_staging_buffer = himem_malloc(read_size, 0);   // allocate in main memory
+            if (fread_staging_buffer == NULL) {
+              strcpy(error_mes, cp932rsc_mainmem_shortage);
+              goto catch;
+            }    
+            size_t done = 0;
+            do {
+              size_t len = fread(fread_staging_buffer, 1, read_size - done, fp);
+              if (len == 0) break;
+              memcpy(fread_buffer + remain_len + done, fread_staging_buffer, len);
+              done += len;
+            } while (done < read_size);
+            himem_free(fread_staging_buffer, 0);
+            fread_staging_buffer = NULL;
+          } else {
+            size_t len = fread(fread_buffer + remain_len, 1, read_size, fp);
+          }
+        }
+      }
 
       // allocate a new chain table entry in high memory
       CHAIN_TABLE_EX* ct = (CHAIN_TABLE_EX*)himem_malloc(sizeof(CHAIN_TABLE_EX), use_high_memory);
@@ -720,6 +800,53 @@ try:
 
       if (playback_driver == DRIVER_PCM8A) {
 
+        // continuous read
+        if (flac_decoder.continuous_read_len > 0) {
+          size_t remain_len = flac_decoder.continuous_read_len - flac_decoder.continuous_read_pos;
+
+#ifdef __VERBOSE__
+        printf("flac_data_pos=%d, continuous_read_pos=%d, remain_len=%d\n",flac_decoder.flac_data_pos,flac_decoder.continuous_read_pos, remain_len);
+#endif
+
+          if (remain_len <= CONTINUOUS_FLAC_DRAIN_BYTES) {
+            memcpy(fread_buffer, fread_buffer + flac_decoder.continuous_read_pos, remain_len);
+            flac_decoder.continuous_read_len = CONTINUOUS_FLAC_CONTINUE_BYTES * ((flac_decoder.bps > 16 || flac_decoder.sample_rate > 48000) ? 2 : 1);
+            flac_decoder.continuous_read_pos = 0;
+            size_t read_size = flac_decoder.continuous_read_len - remain_len;
+            if ((flac_decoder.flac_data_len - flac_decoder.flac_data_pos) < read_size) {
+              read_size = flac_decoder.flac_data_len - flac_decoder.flac_data_pos;
+              flac_decoder.continuous_read_len = read_size;
+            }
+            if (staging_file_read) {
+              fread_staging_buffer = himem_malloc(read_size, 0);   // allocate in main memory
+              if (fread_staging_buffer == NULL) {
+                strcpy(error_mes, cp932rsc_mainmem_shortage);
+                goto catch;
+              }    
+              size_t done = 0;
+              do {
+#ifdef __VERBOSE__
+                printf("fread_staging_buffer=%X,read_size=%d,done=%d\n",fread_staging_buffer,read_size,done);
+#endif
+                size_t len = fread(fread_staging_buffer, 1, read_size - done, fp);
+                if (len == 0) break;
+                memcpy(fread_buffer + remain_len + done, fread_staging_buffer, len);
+                done += len;
+#ifdef __VERBOSE__
+                printf("fread_staging_buffer=%X,read_size=%d,done=%d,len=%d\n",fread_staging_buffer,read_size,done,len);
+#endif
+              } while (done < read_size);
+#ifdef __VERBOSE__
+              printf("done=%d,read_size=%d\n",done,read_size);
+#endif
+              himem_free(fread_staging_buffer, 0);
+              fread_staging_buffer = NULL;
+            } else {
+              size_t len = fread(fread_buffer + remain_len, 1, read_size, fp);
+            }
+          }
+        }
+
         // allocate the next chain table entry
         CHAIN_TABLE* ct = (CHAIN_TABLE*)himem_malloc(sizeof(CHAIN_TABLE), use_high_memory);
         if (ct == NULL) {
@@ -798,6 +925,44 @@ try:
       }
 
       if (playback_driver == DRIVER_PCM8PP) {
+
+        // continuous read
+        if (flac_decoder.continuous_read_len > 0) {
+          size_t remain_len = flac_decoder.continuous_read_len - flac_decoder.continuous_read_pos;
+
+#ifdef __VERBOSE__
+        printf("flac_data_pos=%d, continuous_read_pos=%d, remain_len=%d\n",flac_decoder.flac_data_pos,flac_decoder.continuous_read_pos, remain_len);
+#endif
+
+          if (remain_len <= CONTINUOUS_FLAC_DRAIN_BYTES) {
+            memcpy(fread_buffer, fread_buffer + flac_decoder.continuous_read_pos, remain_len);
+            flac_decoder.continuous_read_len = CONTINUOUS_FLAC_CONTINUE_BYTES * ((flac_decoder.bps > 16 || flac_decoder.sample_rate > 48000) ? 2 : 1);
+            flac_decoder.continuous_read_pos = 0;
+            size_t read_size = flac_decoder.continuous_read_len - remain_len;
+            if ((flac_decoder.flac_data_len - flac_decoder.flac_data_pos) < read_size) {
+              read_size = flac_decoder.flac_data_len - flac_decoder.flac_data_pos;
+              flac_decoder.continuous_read_len = read_size;
+            }
+            if (staging_file_read) {
+              fread_staging_buffer = himem_malloc(read_size, 0);   // allocate in main memory
+              if (fread_staging_buffer == NULL) {
+                strcpy(error_mes, cp932rsc_mainmem_shortage);
+                goto catch;
+              }    
+              size_t done = 0;
+              do {
+                size_t len = fread(fread_staging_buffer, 1, read_size - done, fp);
+                if (len == 0) break;
+                memcpy(fread_buffer + remain_len + done, fread_staging_buffer, len);
+                done += len;
+              } while (done < read_size);
+              himem_free(fread_staging_buffer, 0);
+              fread_staging_buffer = NULL;
+            } else {
+              size_t len = fread(fread_buffer + remain_len, 1, read_size, fp);
+            }
+          }
+        }
 
         // allocate the next chain table entry
         CHAIN_TABLE_EX* ct = (CHAIN_TABLE_EX*)himem_malloc(sizeof(CHAIN_TABLE_EX), use_high_memory);

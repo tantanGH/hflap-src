@@ -16,6 +16,9 @@ typedef struct {
   size_t flac_data_len;
   size_t flac_data_pos;
 
+  size_t continuous_read_len;
+  size_t continuous_read_pos;
+
   uint8_t* tag_vendor;
   uint8_t* tag_title;
   uint8_t* tag_artist;
@@ -39,7 +42,7 @@ typedef struct {
 int32_t flac_decode_init(FLAC_DECODE_HANDLE* decode);
 void flac_decode_close(FLAC_DECODE_HANDLE* decode);
 int32_t flac_decode_get_skip_offset(FLAC_DECODE_HANDLE* decode, FILE* fp);
-int32_t flac_decode_setup(FLAC_DECODE_HANDLE* decode, void* flac_data, size_t flac_data_len, int16_t brightness, int16_t half_size);
+int32_t flac_decode_setup(FLAC_DECODE_HANDLE* decode, void* flac_data, size_t flac_data_len, size_t continuous_read_len, int16_t brightness, int16_t half_size);
 int32_t flac_decode_full(FLAC_DECODE_HANDLE* decode, int16_t* decode_buffer, size_t decode_buffer_bytes, size_t* decoded_bytes);
 int32_t flac_decode_resample(FLAC_DECODE_HANDLE* decode, int16_t* resample_buffer, size_t resample_buffer_bytes, int16_t resample_freq, size_t* resampled_bytes);
 

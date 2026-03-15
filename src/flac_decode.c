@@ -84,6 +84,10 @@ int32_t flac_decode_init(FLAC_DECODE_HANDLE* decode) {
   decode->flac_data = NULL;
   decode->flac_data_len = 0;
 
+  // continuous read
+  decode->continuous_read_len = 0;
+  decode->continuous_read_pos = 0;
+
   // tags
   decode->tag_vendor = NULL;
   decode->tag_title = NULL;
@@ -200,7 +204,7 @@ int32_t flac_decode_get_skip_offset(FLAC_DECODE_HANDLE* decode, FILE* fp) {
 //
 //  setup decode operation
 //
-int32_t flac_decode_setup(FLAC_DECODE_HANDLE* decode, void* flac_data, size_t flac_data_len, int16_t brightness, int16_t half_size) {
+int32_t flac_decode_setup(FLAC_DECODE_HANDLE* decode, void* flac_data, size_t flac_data_len, size_t continuous_read_len, int16_t brightness, int16_t half_size) {
 
   int32_t rc = -1;
 
@@ -209,6 +213,10 @@ int32_t flac_decode_setup(FLAC_DECODE_HANDLE* decode, void* flac_data, size_t fl
   decode->flac_data_len = flac_data_len;
   decode->flac_data_pos = 0;
 
+  // continuous read
+  decode->continuous_read_len = continuous_read_len;
+  decode->continuous_read_pos = 0;
+
   // reset sampling parameters
   decode->sample_rate = -1;
   decode->channels = -1;
@@ -216,22 +224,40 @@ int32_t flac_decode_setup(FLAC_DECODE_HANDLE* decode, void* flac_data, size_t fl
   decode->num_samples = 0;
   decode->resample_counter = 0;
 
+#ifdef __VERBOSE__
+  printf("start setup\n");
+#endif
+
   // obtain sampling parameters
   fx_flac_state_t state;
   do {
-    uint32_t used_bytes = decode->flac_data_len - decode->flac_data_pos;
+    uint32_t used_bytes = decode->continuous_read_len > 0 ? decode->continuous_read_len - decode->flac_data_pos : decode->flac_data_len - decode->flac_data_pos;
     uint32_t decoded_len = decode->samples_len;
     state = fx_flac_process(decode->fx_flac, &(decode->flac_data[decode->flac_data_pos]), &used_bytes, decode->samples, &decoded_len);
-    if (state == FLAC_ERR) goto exit;
+    if (state == FLAC_ERR) {
+#ifdef __VERBOSE__
+      printf("FLAC_ERR during fx_flac_process\n");
+#endif
+      goto exit;
+    }
     decode->flac_data_pos += used_bytes;
+    if (decode->continuous_read_len > 0) decode->continuous_read_pos += used_bytes;
     //printf("setup pos %d\n", decode->flac_data_pos);
     //printf("%d %d %d\n",state, used_bytes, decoded_len);
   } while (state != FLAC_END_OF_METADATA);
+
+#ifdef __VERBOSE__
+  printf("state=%d,flac_data_pos=%d\n",state,decode->flac_data_pos);
+#endif
 
   decode->sample_rate = fx_flac_get_streaminfo(decode->fx_flac, FLAC_KEY_SAMPLE_RATE);
   decode->channels = fx_flac_get_streaminfo(decode->fx_flac, FLAC_KEY_N_CHANNELS);
   decode->bps = fx_flac_get_streaminfo(decode->fx_flac, FLAC_KEY_SAMPLE_SIZE);
   decode->num_samples = fx_flac_get_streaminfo(decode->fx_flac, FLAC_KEY_N_SAMPLES);
+
+#ifdef __VERBOSE__
+  printf("%d,%d,%d,%d\n",decode->sample_rate,decode->channels,decode->bps,decode->num_samples);
+#endif
 
   // obtain tags
   size_t tag_ofs = 4;
@@ -246,7 +272,9 @@ int32_t flac_decode_setup(FLAC_DECODE_HANDLE* decode, void* flac_data, size_t fl
     if ((meta_type & 0x7f) == 4) {
 
       // VORBIS_COMMENT
-
+#ifdef __VERBOSE__
+      printf("VORBIS_COMMENT\n");
+#endif
       size_t vendor_comment_size = decode->flac_data[tag_ofs] + 
                                    (decode->flac_data[tag_ofs+1] << 8) +
                                    (decode->flac_data[tag_ofs+2] << 16) +
@@ -306,7 +334,9 @@ int32_t flac_decode_setup(FLAC_DECODE_HANDLE* decode, void* flac_data, size_t fl
     } else if (brightness > 0 && (meta_type & 0x7f) == 6) {
 
       // PICTURE
-
+#ifdef __VERBOSE__
+      printf("PICTURE\n");
+#endif
       uint32_t picture_type = (decode->flac_data[tag_ofs] << 24) + 
                               (decode->flac_data[tag_ofs+1] << 16) +
                               (decode->flac_data[tag_ofs+2] << 8) +
@@ -396,16 +426,17 @@ int32_t flac_decode_full(FLAC_DECODE_HANDLE* decode, int16_t* decode_buffer, siz
 
   for (;;) {
 
-    uint32_t used_bytes = decode->flac_data_len - decode->flac_data_pos;
+    uint32_t used_bytes = decode->continuous_read_len > 0 ? decode->continuous_read_len - decode->continuous_read_pos : decode->flac_data_len - decode->flac_data_pos;
     uint32_t sample_len = (decode_buffer_bytes / sizeof(int16_t)) - decode_ofs;
       
     if (fx_flac_process(decode->fx_flac, 
-                        &(decode->flac_data[decode->flac_data_pos]), 
+                        &(decode->flac_data[decode->continuous_read_len > 0 ? decode->continuous_read_pos : decode->flac_data_pos]), 
                         &used_bytes, 
                         &(decode_buffer[decode_ofs]), 
                         &sample_len) == FLAC_ERR) goto exit;
 
     decode->flac_data_pos += used_bytes;
+    if (decode->continuous_read_len > 0) decode->continuous_read_pos += used_bytes;
     decode_ofs += sample_len;
 
     // end of FLAC
@@ -446,16 +477,17 @@ int32_t flac_decode_resample(FLAC_DECODE_HANDLE* decode, int16_t* decode_buffer,
 
   for (;;) {
 
-    uint32_t used_bytes = decode->flac_data_len - decode->flac_data_pos;
+    uint32_t used_bytes = decode->continuous_read_len > 0 ? decode->continuous_read_len - decode->continuous_read_pos : decode->flac_data_len - decode->flac_data_pos;
     uint32_t sample_len = decode->samples_len;
 
     if (fx_flac_process(decode->fx_flac, 
-                        &(decode->flac_data[decode->flac_data_pos]), 
+                        &(decode->flac_data[decode->continuous_read_len > 0 ? decode->continuous_read_pos : decode->flac_data_pos]), 
                         &used_bytes, 
                         decode->samples, 
                         &sample_len) == FLAC_ERR) goto exit;
 
     decode->flac_data_pos += used_bytes;
+    if (decode->continuous_read_len > 0) decode->continuous_read_pos += used_bytes;
 
     // end of FLAC
     if (sample_len == 0) break;
