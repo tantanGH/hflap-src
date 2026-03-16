@@ -189,6 +189,10 @@ int32_t jpeg_decode_exec(JPEG_DECODE_HANDLE* jpeg, uint8_t* jpeg_buffer, size_t 
     goto exit;
   }
 
+  if (image_info.m_height >= 1024 || image_info.m_width >= 1024) {
+    return jpeg_decode_exec_half(jpeg, jpeg_buffer, jpeg_buffer_bytes);
+  }
+
   int32_t ofs_y = ( 512 - image_info.m_height ) / 2;
   int32_t ofs_x = ( 512 - image_info.m_width  ) / 2;
 
