@@ -2,11 +2,13 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include "himem.h"
+#include <himem.h>
 #include "picojpeg.h"
 #include "jpeg_decode.h"
 
 #define GVRAM ((uint16_t*)0xC00000)
+
+#define MIN(x,y) ((x) < (y) ? (x) : (y))
 
 static uint8_t pjpeg_need_bytes_callback(uint8_t* pBuf, uint8_t buf_size, uint8_t* pBytes_actually_read, void* pCallback_data) {
 
@@ -32,9 +34,9 @@ int32_t jpeg_decode_init(JPEG_DECODE_HANDLE* jpeg, int16_t brightness, int16_t h
   jpeg->brightness = brightness;
   jpeg->half_size = half_size;
 
-  jpeg->rgb555_r = (uint16_t*)himem_malloc(sizeof(uint16_t) * 256, 1);
-  jpeg->rgb555_g = (uint16_t*)himem_malloc(sizeof(uint16_t) * 256, 1);
-  jpeg->rgb555_b = (uint16_t*)himem_malloc(sizeof(uint16_t) * 256, 1);
+  jpeg->rgb555_r = (uint16_t*)himem_malloc(sizeof(uint16_t) * 256);
+  jpeg->rgb555_g = (uint16_t*)himem_malloc(sizeof(uint16_t) * 256);
+  jpeg->rgb555_b = (uint16_t*)himem_malloc(sizeof(uint16_t) * 256);
 
   if (jpeg->rgb555_r == NULL || jpeg->rgb555_g == NULL || jpeg->rgb555_b == NULL) goto exit;
 
@@ -53,15 +55,15 @@ exit:
 
 void jpeg_decode_close(JPEG_DECODE_HANDLE* jpeg) {
   if (jpeg->rgb555_r != NULL) {
-    himem_free(jpeg->rgb555_r, 1);
+    himem_free(jpeg->rgb555_r);
     jpeg->rgb555_r = NULL;
   }
   if (jpeg->rgb555_g != NULL) {
-    himem_free(jpeg->rgb555_g, 1);
+    himem_free(jpeg->rgb555_g);
     jpeg->rgb555_g = NULL;
   }
   if (jpeg->rgb555_b != NULL) {
-    himem_free(jpeg->rgb555_b, 1);
+    himem_free(jpeg->rgb555_b);
     jpeg->rgb555_b = NULL;
   }   
 }
@@ -100,7 +102,7 @@ static int32_t jpeg_decode_exec_half(JPEG_DECODE_HANDLE* jpeg, uint8_t* jpeg_buf
 
     for (int32_t y = 0; y < image_info.m_MCUHeight; y += 8) {
 
-      const int by_limit = min(8, image_info.m_height - (mcu_y * image_info.m_MCUHeight + y));
+      const int by_limit = MIN(8, image_info.m_height - (mcu_y * image_info.m_MCUHeight + y));
 
       for (int32_t x = 0; x < image_info.m_MCUWidth; x += 8) {
 
@@ -109,7 +111,7 @@ static int32_t jpeg_decode_exec_half(JPEG_DECODE_HANDLE* jpeg, uint8_t* jpeg_buf
         const uint8_t *pSrcG = image_info.m_pMCUBufG + src_ofs;
         const uint8_t *pSrcB = image_info.m_pMCUBufB + src_ofs;
 
-        const int16_t bx_limit = min(8, image_info.m_width - (mcu_x * image_info.m_MCUWidth + x));
+        const int16_t bx_limit = MIN(8, image_info.m_width - (mcu_x * image_info.m_MCUWidth + x));
 
         for (int16_t by = 0; by < by_limit; by++) {
 
@@ -189,6 +191,10 @@ int32_t jpeg_decode_exec(JPEG_DECODE_HANDLE* jpeg, uint8_t* jpeg_buffer, size_t 
     goto exit;
   }
 
+  if (image_info.m_height >= 1024 || image_info.m_width >= 1024) {
+    return jpeg_decode_exec_half(jpeg, jpeg_buffer, jpeg_buffer_bytes);
+  }
+
   int32_t ofs_y = ( 512 - image_info.m_height ) / 2;
   int32_t ofs_x = ( 512 - image_info.m_width  ) / 2;
 
@@ -210,7 +216,7 @@ int32_t jpeg_decode_exec(JPEG_DECODE_HANDLE* jpeg, uint8_t* jpeg_buffer, size_t 
 
     for (int32_t y = 0; y < image_info.m_MCUHeight; y += 8) {
 
-      const int by_limit = min(8, image_info.m_height - (mcu_y * image_info.m_MCUHeight + y));
+      const int by_limit = MIN(8, image_info.m_height - (mcu_y * image_info.m_MCUHeight + y));
 
       for (int32_t x = 0; x < image_info.m_MCUWidth; x += 8) {
 
@@ -219,7 +225,7 @@ int32_t jpeg_decode_exec(JPEG_DECODE_HANDLE* jpeg, uint8_t* jpeg_buffer, size_t 
         const uint8_t* pSrcG = image_info.m_pMCUBufG + src_ofs;
         const uint8_t* pSrcB = image_info.m_pMCUBufB + src_ofs;
 
-        const int16_t bx_limit = min(8, image_info.m_width - (mcu_x * image_info.m_MCUWidth + x));
+        const int16_t bx_limit = MIN(8, image_info.m_width - (mcu_x * image_info.m_MCUWidth + x));
 
         for (int16_t by = 0; by < by_limit; by++) {
 
