@@ -4,7 +4,7 @@
 
 # 必要な環境変数が定義されていることを確認する。
 ifndef XDEV68K_DIR
-	$(error ERROR : XDEV68K_DIR is not defined.)
+	XDEV68K_DIR=/opt/xdev68k
 endif
 
 # デフォルトサフィックスを削除

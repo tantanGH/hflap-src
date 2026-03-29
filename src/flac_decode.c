@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
-#include "himem.h"
-#include "utf8_cp932.h"
+#include <himem.h>
+#include <utf8_cp932.h>
 #include "jpeg_decode.h"
 #include "flac_decode.h"
 
@@ -107,13 +107,13 @@ int32_t flac_decode_init(FLAC_DECODE_HANDLE* decode) {
   decode->fx_flac = NULL;
 
   // fx_flac init
-  decode->fx_flac_buffer = himem_malloc(fx_flac_size(FLAC_MAX_BLOCK_SIZE, FLAC_MAX_CHANNEL_COUNT), 1);
+  decode->fx_flac_buffer = himem_malloc(fx_flac_size(FLAC_MAX_BLOCK_SIZE, FLAC_MAX_CHANNEL_COUNT));
   if (decode->fx_flac_buffer == NULL) goto exit;
   decode->fx_flac = fx_flac_init(decode->fx_flac_buffer, FLAC_MAX_BLOCK_SIZE, FLAC_MAX_CHANNEL_COUNT);
 
   // decode buffers
   decode->samples_len = sizeof(int32_t) * FLAC_MAX_BLOCK_SIZE * FLAC_MAX_CHANNEL_COUNT;
-  decode->samples = himem_malloc(decode->samples_len, 1);
+  decode->samples = himem_malloc(decode->samples_len);
   if (decode->samples == NULL) goto exit;
 
   rc = 0;
@@ -132,29 +132,29 @@ void flac_decode_close(FLAC_DECODE_HANDLE* decode) {
   }
 
   if (decode->fx_flac_buffer != NULL) {
-    himem_free(decode->fx_flac_buffer, 1);
+    himem_free(decode->fx_flac_buffer);
     decode->fx_flac_buffer = NULL;
   }
 
   if (decode->samples != NULL) {  
-    himem_free(decode->samples, 1);
+    himem_free(decode->samples);
     decode->samples = NULL;
   }
 
   if (decode->tag_vendor != NULL) {
-    himem_free(decode->tag_vendor, 1);
+    himem_free(decode->tag_vendor);
     decode->tag_vendor = NULL;
   }
   if (decode->tag_title != NULL) {
-    himem_free(decode->tag_title, 1);
+    himem_free(decode->tag_title);
     decode->tag_title = NULL;
   }
   if (decode->tag_artist != NULL) {
-    himem_free(decode->tag_artist, 1);
+    himem_free(decode->tag_artist);
     decode->tag_artist = NULL;
   }
   if (decode->tag_album != NULL) {
-    himem_free(decode->tag_album, 1);
+    himem_free(decode->tag_album);
     decode->tag_album = NULL;
   }
 
@@ -282,7 +282,7 @@ int32_t flac_decode_setup(FLAC_DECODE_HANDLE* decode, void* flac_data, size_t fl
 
       tag_ofs += 4;
 
-      decode->tag_vendor = himem_malloc(vendor_comment_size * 2, 1);
+      decode->tag_vendor = himem_malloc(vendor_comment_size * 2);
       convert_utf8_to_cp932(decode->tag_vendor, &(decode->flac_data[tag_ofs]), vendor_comment_size);
       
       tag_ofs += vendor_comment_size;
@@ -313,14 +313,14 @@ int32_t flac_decode_setup(FLAC_DECODE_HANDLE* decode, void* flac_data, size_t fl
           size_t value_size = comment_size - epos - 1;
           //printf("tag_key=[%s], epos=%d, comment_size=%d, value_size=%d\n", tag_key, epos, comment_size, value_size);
           if (value_size > 0) {
-            if (stricmp(tag_key, "ARTIST") == 0) {
-              decode->tag_artist = himem_malloc(value_size * 2, 1);
+            if (strcasecmp(tag_key, "ARTIST") == 0) {
+              decode->tag_artist = himem_malloc(value_size * 2);
               convert_utf8_to_cp932(decode->tag_artist, &(decode->flac_data[tag_ofs + epos + 1]), value_size);
-            } else if (stricmp(tag_key, "ALBUM") == 0) {
-              decode->tag_album = himem_malloc(value_size * 2, 1);
+            } else if (strcasecmp(tag_key, "ALBUM") == 0) {
+              decode->tag_album = himem_malloc(value_size * 2);
               convert_utf8_to_cp932(decode->tag_album, &(decode->flac_data[tag_ofs + epos + 1]), value_size);
-            } else if (stricmp(tag_key, "TITLE") == 0) {
-              decode->tag_title = himem_malloc(value_size * 2, 1);
+            } else if (strcasecmp(tag_key, "TITLE") == 0) {
+              decode->tag_title = himem_malloc(value_size * 2);
               convert_utf8_to_cp932(decode->tag_title, &(decode->flac_data[tag_ofs + epos + 1]), value_size);
             }
           }
