@@ -2,21 +2,22 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-//#include <stat.h>
 #include <doslib.h>
 #include <iocslib.h>
 
+// himem
+#include <himem.h>
+
+// pcm driver
+#include <pcm8a.h>
+#include <pcm8pp.h>
+
 // devices
 #include "keyboard.h"
-#include "himem.h"
 #include "crtc.h"
 
 // resource
 #include "cp932rsc.h"
-
-// pcm driver
-#include "pcm8a.h"
-#include "pcm8pp.h"
 
 // codec
 #include "flac_decode.h"
@@ -200,6 +201,9 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
   uint8_t error_mes[ 256 ];
   error_mes[0] = '\0';
 
+  // non-quoted filename
+  uint8_t flac_raw_file_name[ MAX_PATH_LEN ];
+
 #ifdef __mc68060__
   if (get_mpu_type() < 6) {
     strcpy(error_mes, cp932rsc_mpu_type_68060);
@@ -265,6 +269,13 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
   if (flac_file_name == NULL || strlen(flac_file_name) < 5) {
     show_help_message();
     goto exit;
+  }
+
+  // file name is quoted?
+  if (flac_file_name[0] == '"' && flac_file_name[strlen(flac_file_name)-1] == '"') {
+    strncpy(flac_raw_file_name, flac_file_name + 1, strlen(flac_file_name) - 2);
+  } else {
+    strcpy(flac_raw_file_name, flac_file_name);
   }
 
   // check himem availability
@@ -337,7 +348,8 @@ loop:
   CHAIN_TABLE_EX* cur_chain_table_ex = NULL;
 
   // file read pointer
-  FILE* fp = NULL;
+  //FILE* fp = NULL;
+  int32_t fd = -1;
 
 try:
 
@@ -349,23 +361,22 @@ try:
   }
 
   // open input file
-  fp = fopen(flac_file_name, "rb");
-  if (fp == NULL) {
+  fd = OPEN(flac_raw_file_name, 0);
+  if (fd < 0) {
     strcpy(error_mes, cp932rsc_file_open_error);
     goto catch;
   }
 
   // get skip offset (skip ID3 tag)
-  int32_t skip_offset = flac_decode_get_skip_offset(&flac_decoder, fp);
+  int32_t skip_offset = flac_decode_get_skip_offset(&flac_decoder, fd);
   if (skip_offset < 0) {
     strcpy(error_mes, cp932rsc_file_open_error);
     goto catch;    
   }
 
   // obtain data content size
-  fseek(fp, 0, SEEK_END);
-  uint32_t flac_data_size = ftell(fp) - skip_offset;
-  fseek(fp, skip_offset, SEEK_SET);
+  uint32_t flac_data_size = SEEK(fd, 0, 2) - skip_offset;
+  SEEK(fd, skip_offset, 0);
 
   // allocate file read buffer
   size_t fread_buffer_len = continuous_read ? CONTINUOUS_FLAC_BUFFER_BYTES : flac_data_size;
@@ -374,6 +385,14 @@ try:
     strcpy(error_mes, cp932rsc_himem_shortage);
     goto catch;
   }
+
+  // close standard file handle
+  //fclose(fp);
+  //fp = NULL;
+
+  // reopen the file using DOS call
+  //fd = OPEN(flac_file_name, 0);
+  //SEEK(fd, skip_offset, 0);
 
   // read whole flac file content into high memory
   printf("\rLoading FLAC file...\x1b[0K");
@@ -386,7 +405,7 @@ try:
     }    
     size_t read_len = 0; 
     do {
-      size_t len = fread(fread_staging_buffer, 1, FREAD_STAGING_BUFFER_BYTES, fp);
+      size_t len = READ(fd, fread_staging_buffer, FREAD_STAGING_BUFFER_BYTES);
       memcpy(fread_buffer + read_len, fread_staging_buffer, len);
       read_len += len;
     } while (read_len < fread_buffer_len);
@@ -398,13 +417,15 @@ try:
     do {
 //      size_t read_size = (flac_data_size - read_len) < FREAD_CHUNK_BYTES ? (flac_data_size - read_len) : FREAD_CHUNK_BYTES;
       size_t read_size = (fread_buffer_len - read_len) < FREAD_CHUNK_BYTES ? (fread_buffer_len - read_len) : FREAD_CHUNK_BYTES;
-      size_t len = fread(fread_buffer + read_len, 1, read_size, fp);
+      size_t len = READ(fd, fread_buffer + read_len, read_size);
       read_len += len;
     } while (read_len < fread_buffer_len);
   }
   if (continuous_read == 0) {
-    fclose(fp);
-    fp = NULL;
+    //fclose(fp);
+    //fp = NULL;
+    CLOSE(fd);
+    fd = -1;
   }
   printf("\r\x1b[0K");
 
@@ -456,7 +477,7 @@ try:
 
     printf("\n");
 
-    printf("File name      : %s\n", flac_file_name);
+    printf("File name      : %s\n", flac_raw_file_name);
     printf("Data size      : %d [bytes]\n", flac_data_size);
     printf("Data format    : %s\n", "FLAC");
 
@@ -523,7 +544,7 @@ try:
             }
             size_t done = 0;
             do {
-              size_t len = fread(fread_staging_buffer, 1, read_size - done, fp);
+              size_t len = READ(fd, fread_staging_buffer, read_size - done);
               if (len == 0) break;
               memcpy(fread_buffer + remain_len + done, fread_staging_buffer, len);
               done += len;
@@ -531,7 +552,7 @@ try:
             free(fread_staging_buffer);
             fread_staging_buffer = NULL;
           } else {
-            size_t len = fread(fread_buffer + remain_len, 1, read_size, fp);
+            size_t len = READ(fd, fread_buffer + remain_len, read_size);
           }
         }
       }
@@ -615,7 +636,7 @@ try:
             }    
             size_t done = 0;
             do {
-              size_t len = fread(fread_staging_buffer, 1, read_size - done, fp);
+              size_t len = READ(fd, fread_staging_buffer, read_size - done);
               if (len == 0) break;
               memcpy(fread_buffer + remain_len + done, fread_staging_buffer, len);
               done += len;
@@ -623,7 +644,7 @@ try:
             free(fread_staging_buffer);
             fread_staging_buffer = NULL;
           } else {
-            size_t len = fread(fread_buffer + remain_len, 1, read_size, fp);
+            size_t len = READ(fd, fread_buffer + remain_len, read_size);
           }
         }
       }
@@ -825,7 +846,7 @@ try:
               }    
               size_t done = 0;
               do {
-                size_t len = fread(fread_staging_buffer, 1, read_size - done, fp);
+                size_t len = READ(fd, fread_staging_buffer, read_size - done);
                 if (len == 0) break;
                 memcpy(fread_buffer + remain_len + done, fread_staging_buffer, len);
                 done += len;
@@ -833,7 +854,7 @@ try:
               free(fread_staging_buffer);
               fread_staging_buffer = NULL;
             } else {
-              size_t len = fread(fread_buffer + remain_len, 1, read_size, fp);
+              size_t len = READ(fd, fread_buffer + remain_len, read_size);
             }
           }
         }
@@ -942,7 +963,7 @@ try:
               }    
               size_t done = 0;
               do {
-                size_t len = fread(fread_staging_buffer, 1, read_size - done, fp);
+                size_t len = READ(fd, fread_staging_buffer, read_size - done);
                 if (len == 0) break;
                 memcpy(fread_buffer + remain_len + done, fread_staging_buffer, len);
                 done += len;
@@ -950,7 +971,7 @@ try:
               free(fread_staging_buffer);
               fread_staging_buffer = NULL;
             } else {
-              size_t len = fread(fread_buffer + remain_len, 1, read_size, fp);
+              size_t len = READ(fd, fread_buffer + remain_len, read_size);
             }
           }
         }
@@ -1057,9 +1078,13 @@ catch:
   for (int32_t t0 = ONTIME(); ONTIME() < t0 + 20;) {}
 
   // close input file if still opened
-  if (fp != NULL) {
-    fclose(fp);
-    fp = NULL;
+//  if (fp != NULL) {
+//    fclose(fp);
+//    fp = NULL;
+//  }
+  if (fd != -1) {
+    CLOSE(fd);
+    fd = -1;
   }
 
   // reclaim file read buffers

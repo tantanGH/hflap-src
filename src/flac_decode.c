@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
+#include <doslib.h>
 #include <himem.h>
 #include <utf8_cp932.h>
 #include "jpeg_decode.h"
@@ -163,11 +164,11 @@ void flac_decode_close(FLAC_DECODE_HANDLE* decode) {
 //
 //  get skip offset (skip ID3v2 tags)
 //
-int32_t flac_decode_get_skip_offset(FLAC_DECODE_HANDLE* decode, FILE* fp) {
+int32_t flac_decode_get_skip_offset(FLAC_DECODE_HANDLE* decode, int32_t fd) {
 
   // read the first 10 bytes of the FLAC file
   uint8_t flac_header[10];
-  size_t ret = fread(flac_header, 1, 10, fp);
+  size_t ret = READ(fd, flac_header, 10);
   if (ret != 10) {
     return -1;
   }
@@ -190,11 +191,11 @@ int32_t flac_decode_get_skip_offset(FLAC_DECODE_HANDLE* decode, FILE* fp) {
   // skip extended ID3v2 header
   if (flac_header[5] & (1<<6)) {
     uint8_t ext_header[6];
-    fread(ext_header, 1, 6, fp);
+    READ(fd, ext_header, 6);
     uint32_t ext_header_size = id3v2_version == 0x03 ? *((uint32_t*)(ext_header + 0)) :
                                 ((ext_header[0] & 0x7f) << 21) | ((ext_header[1] & 0x7f) << 14) |
                                 ((ext_header[2] & 0x7f) << 7)  | (ext_header[3] & 0x7f);
-    fseek(fp, ext_header_size, SEEK_CUR);
+    SEEK(fd, ext_header_size, 1);
     total_tag_size -= 6 + ext_header_size;
   }
 
@@ -224,10 +225,6 @@ int32_t flac_decode_setup(FLAC_DECODE_HANDLE* decode, void* flac_data, size_t fl
   decode->num_samples = 0;
   decode->resample_counter = 0;
 
-#ifdef __VERBOSE__
-  printf("start setup\n");
-#endif
-
   // obtain sampling parameters
   fx_flac_state_t state;
   do {
@@ -235,9 +232,6 @@ int32_t flac_decode_setup(FLAC_DECODE_HANDLE* decode, void* flac_data, size_t fl
     uint32_t decoded_len = decode->samples_len;
     state = fx_flac_process(decode->fx_flac, &(decode->flac_data[decode->flac_data_pos]), &used_bytes, decode->samples, &decoded_len);
     if (state == FLAC_ERR) {
-#ifdef __VERBOSE__
-      printf("FLAC_ERR during fx_flac_process\n");
-#endif
       goto exit;
     }
     decode->flac_data_pos += used_bytes;
