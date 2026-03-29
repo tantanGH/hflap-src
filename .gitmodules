@@ -1,0 +1,12 @@
+[submodule "libs/libutf8"]
+	path = libs/libutf8
+	url = https://github.com/tantanGH/libutf8.git
+[submodule "libs/libhimem"]
+	path = libs/libhimem
+	url = https://github.com/tantanGH/libhimem.git
+[submodule "libs/libpcm8a"]
+	path = libs/libpcm8a
+	url = https://github.com/tantanGH/libpcm8a.git
+[submodule "libs/libpcm8pp"]
+	path = libs/libpcm8pp
+	url = https://github.com/tantanGH/libpcm8pp.git
