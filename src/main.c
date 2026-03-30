@@ -354,6 +354,7 @@ loop:
   // reclaim chain table entries
   CHAIN_TABLE* reclaim_chain_table = NULL;
   CHAIN_TABLE_EX* reclaim_chain_table_ex = NULL;
+  int32_t reclaim_block_counter = 0;
 
   // file read pointer
   //FILE* fp = NULL;
@@ -801,7 +802,7 @@ try:
   for (int32_t t0 = ONTIME(); ONTIME() < t0 + 20;) {}
 
   int32_t block_counter_ofs = 0;
-  int16_t buffer_delta = num_buffers;
+  int32_t buffer_delta = num_buffers;
 
   for (;;) {
    
@@ -949,13 +950,14 @@ try:
           rct = rct->next;
         }
 
-        int16_t dt = num_chains - block_counter;
+        int32_t dt = num_chains - block_counter;
         if (dt >= buffer_delta) {
           if (!quiet_mode) B_PRINT(">");
-          if (reclaim_chain_table->buffer != NULL) {    // reclaim buffer memory
+          if (reclaim_block_counter < block_counter && reclaim_chain_table->buffer != NULL) {    // reclaim buffer memory
             himem_free(reclaim_chain_table->buffer);
             reclaim_chain_table->buffer = NULL;
             reclaim_chain_table = reclaim_chain_table->next;
+            reclaim_block_counter = block_counter;
           }
         } else {
           if (!quiet_mode) B_PRINT("*");
@@ -1066,13 +1068,15 @@ try:
         num_chains++;
 
         // in case any buffered chain is consumed, display '*'. Otherwise display '.'.
-        int16_t dt = num_chains - (block_counter_ofs + pcm8pp_get_block_counter(0));
+        int32_t block_counter = pcm8pp_get_block_counter(0);
+        int32_t dt = num_chains - (block_counter_ofs + block_counter);
         if (dt >= buffer_delta) {
           if (!quiet_mode) B_PRINT(">");
-          if (reclaim_chain_table_ex->buffer != NULL) {    // reclaim buffer memory
+          if (reclaim_block_counter < block_counter && reclaim_chain_table_ex->buffer != NULL) {    // reclaim buffer memory
             himem_free(reclaim_chain_table_ex->buffer);
             reclaim_chain_table_ex->buffer = NULL;
             reclaim_chain_table_ex = reclaim_chain_table_ex->next;
+            reclaim_block_counter = block_counter;
           }
         } else {
           if (!quiet_mode) B_PRINT("*");
