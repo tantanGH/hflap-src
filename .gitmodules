@@ -13,3 +13,6 @@
 [submodule "libs/libj"]
 	path = libs/libj
 	url = https://github.com/tantanGH/libj.git
+[submodule "libs/libjpeg"]
+	path = libs/libjpeg
+	url = https://github.com/tantanGH/libjpeg.git
