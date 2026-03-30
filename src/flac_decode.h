@@ -5,8 +5,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stddef.h>
-
-#include "flac.h"
+#include <flac.h>
 
 typedef fx_flac_t FX_FLAC;
 
