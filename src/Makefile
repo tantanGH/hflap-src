@@ -71,11 +71,11 @@ OBJS_060 =	$(addprefix $(INTERMEDIATE_DIR_060)/,$(patsubst %.c,%.o,$(C_SRCS))) \
 	    	$(addprefix $(INTERMEDIATE_DIR_060)/,$(patsubst %.s,%.o,$(ASM_SRCS)))
 
 # コンパイルフラグ
-COMMON_FLAGS_000 = -m68000 -O3 -msoft-float $(INCLUDE_FLAGS) -fno-defer-pop
+COMMON_FLAGS_000 = -m68000 -O3 -msoft-float -specs=nano.specs $(INCLUDE_FLAGS) -fno-defer-pop
 CFLAGS_000 = $(COMMON_FLAGS_000) -DHFLAP
-COMMON_FLAGS_030 = -m68030 -O3 -msoft-float $(INCLUDE_FLAGS) -fno-defer-pop
+COMMON_FLAGS_030 = -m68030 -O3 -msoft-float -specs=nano.specs $(INCLUDE_FLAGS) -fno-defer-pop
 CFLAGS_030 = $(COMMON_FLAGS_030) -DHFLAP
-COMMON_FLAGS_060 = -m68060 -O3 -msoft-float $(INCLUDE_FLAGS) -fno-defer-pop
+COMMON_FLAGS_060 = -m68060 -O3 -msoft-float -specs=nano.specs $(INCLUDE_FLAGS) -fno-defer-pop
 CFLAGS_060 = $(COMMON_FLAGS_060) -DHFLAP
 
 # デフォルトのターゲット
