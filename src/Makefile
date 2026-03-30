@@ -30,26 +30,28 @@ HAS2GAS = python3 has2gas.py
 # ヘッダ検索パス
 INCLUDE_FLAGS = -I${ELF2X68K_DIR}/lib/gcc/m68k-elf/13.4.0/include \
 				-I${ELF2X68K_DIR}/m68k-elf/include \
+				-I../libs/libhimem/include \
 				-I../libs/libj/include \
 				-I../libs/libutf8/include \
-				-I../libs/libhimem/include \
+				-I../libs/libjpeg/include \
 				-I../libs/libpcm8a/include \
 				-I../libs/libpcm8pp/include
 
 # ライブラリ検索パス
-LDFLAGS = -L../libs/libj/lib -L../libs/libutf8/lib -L../libs/libhimem/lib -L../libs/libpcm8a/lib -L../libs/libpcm8pp/lib
+LDFLAGS = -L../libs/libhimem/lib -L../libs/libj/lib -L../libs/libutf8/lib \
+		  -L../libs/libjpeg/lib -L../libs/libpcm8a/lib -L../libs/libpcm8pp/lib
 
 # *.c ソースファイル
-C_SRCS = crtc.c picojpeg.c jpeg_decode.c flac.c flac_decode.c main.c
+C_SRCS = flac.c flac_decode.c main.c
 
 # *.s ソースファイル
 ASM_SRCS = cp932rsc.s
 
 # *.h source files
-HEADER_SRCS = cp932rsc.h crtc.h picojpeg.h jpeg_decode.h flac.h flac_decode.h hflap.h
+HEADER_SRCS = cp932rsc.h flac.h flac_decode.h hflap.h
 
 # リンク対象のライブラリファイル
-LIBS = -ldos -liocs -lj -lutf8 -lhimem -lpcm8a -lpcm8pp
+LIBS = -ldos -liocs -lhimem -lj -lutf8 -ljpeg -lpcm8a -lpcm8pp
 
 # 中間ファイル生成用ディレクトリ
 INTERMEDIATE_DIR_000 = _build000/elf2x68k
@@ -65,11 +67,11 @@ OBJS_060 =	$(addprefix $(INTERMEDIATE_DIR_060)/,$(patsubst %.c,%.o,$(C_SRCS))) \
 	    	$(addprefix $(INTERMEDIATE_DIR_060)/,$(patsubst %.s,%.o,$(ASM_SRCS)))
 
 # コンパイルフラグ
-COMMON_FLAGS_000 = -m68000 -O3 -msoft-float $(INCLUDE_FLAGS)
+COMMON_FLAGS_000 = -m68000 -O3 -msoft-float $(INCLUDE_FLAGS) -fno-defer-pop
 CFLAGS_000 = $(COMMON_FLAGS_000) -DHFLAP
-COMMON_FLAGS_030 = -m68030 -O3 -msoft-float $(INCLUDE_FLAGS)
+COMMON_FLAGS_030 = -m68030 -O3 -msoft-float $(INCLUDE_FLAGS) -fno-defer-pop
 CFLAGS_030 = $(COMMON_FLAGS_030) -DHFLAP
-COMMON_FLAGS_060 = -m68060 -O3 -msoft-float $(INCLUDE_FLAGS)
+COMMON_FLAGS_060 = -m68060 -O3 -msoft-float $(INCLUDE_FLAGS) -fno-defer-pop
 CFLAGS_060 = $(COMMON_FLAGS_060) -DHFLAP
 
 # デフォルトのターゲット
