@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <jstring.h>
 #include <doslib.h>
 #include <iocslib.h>
 
@@ -183,7 +184,7 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
   g_funckey_mode = C_FNKMOD(-1);
 
   // command line options
-  uint8_t* flac_file_name = NULL;
+  //uint8_t* flac_file_name = NULL;
   int16_t playback_volume = DEFAULT_VOLUME;
   int16_t loop_count = 1;
   int16_t num_buffers = DEFAULT_BUFFERS;
@@ -202,7 +203,8 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
   error_mes[0] = '\0';
 
   // non-quoted filename
-  uint8_t flac_raw_file_name[ MAX_PATH_LEN ];
+  uint8_t flac_file_name[ MAX_PATH_LEN ];
+  flac_file_name[0] = '\0';
 
 #ifdef __mc68060__
   if (get_mpu_type() < 6) {
@@ -253,11 +255,23 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
         goto exit;
       }
     } else {
-      if (flac_file_name != NULL) {
+      if (flac_file_name[0] != '\0') {
         strcpy(error_mes, cp932rsc_too_many_files);
         goto exit;
       }
-      flac_file_name = argv[i];
+      if (argv[i][0] == '"' || argv[i][0] == '\'') {
+        // detected filename quotation
+        struct PDBADR* pdb = GETPDB();
+        uint8_t* q0 = jstrchr((uint8_t*)(pdb->comline),argv[i][0]);
+        uint8_t* q1 = jstrrchr((uint8_t*)(pdb->comline),argv[i][0]);
+        if (q0 < q1) {
+          memcpy(flac_file_name, q0 + 1, q1 - q0 - 1);
+          flac_file_name[q1 - q0 - 1] = '\0';
+        }
+        break;  // no more parsing
+      } else {
+        strcpy(flac_file_name, argv[i]);
+      }
 //      if (strlen(flac_file_name) < 5 || stricmp(flac_file_name + strlen(flac_file_name) - 4, ".fla") != 0) {
 //        strcpy(error_mes, cp932rsc_not_flac_file);
 //        goto exit;
@@ -266,16 +280,9 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
   }
 
   // flac file is specified?
-  if (flac_file_name == NULL || strlen(flac_file_name) < 5) {
+  if (flac_file_name[0] == '\0' || strlen(flac_file_name) < 5) {
     show_help_message();
     goto exit;
-  }
-
-  // file name is quoted?
-  if (flac_file_name[0] == '"' && flac_file_name[strlen(flac_file_name)-1] == '"') {
-    strncpy(flac_raw_file_name, flac_file_name + 1, strlen(flac_file_name) - 2);
-  } else {
-    strcpy(flac_raw_file_name, flac_file_name);
   }
 
   // check himem availability
@@ -361,7 +368,7 @@ try:
   }
 
   // open input file
-  fd = OPEN(flac_raw_file_name, 0);
+  fd = OPEN(flac_file_name, 0);
   if (fd < 0) {
     strcpy(error_mes, cp932rsc_file_open_error);
     goto catch;
@@ -477,7 +484,7 @@ try:
 
     printf("\n");
 
-    printf("File name      : %s\n", flac_raw_file_name);
+    printf("File name      : %s\n", flac_file_name);
     printf("Data size      : %d [bytes]\n", flac_data_size);
     printf("Data format    : %s\n", "FLAC");
 

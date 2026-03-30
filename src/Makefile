@@ -7,7 +7,7 @@ endif
 .SUFFIXES:
 
 # バージョン
-VERSION = 060
+VERSION = 061
 
 # 実行ファイル名
 TARGET_FILE_000 = HFLAP.X
@@ -30,13 +30,14 @@ HAS2GAS = python3 has2gas.py
 # ヘッダ検索パス
 INCLUDE_FLAGS = -I${ELF2X68K_DIR}/lib/gcc/m68k-elf/13.4.0/include \
 				-I${ELF2X68K_DIR}/m68k-elf/include \
+				-I../libs/libj/include \
 				-I../libs/libutf8/include \
 				-I../libs/libhimem/include \
 				-I../libs/libpcm8a/include \
 				-I../libs/libpcm8pp/include
 
 # ライブラリ検索パス
-LDFLAGS = -L../libs/libutf8/lib -L../libs/libhimem/lib -L../libs/libpcm8a/lib -L../libs/libpcm8pp/lib
+LDFLAGS = -L../libs/libj/lib -L../libs/libutf8/lib -L../libs/libhimem/lib -L../libs/libpcm8a/lib -L../libs/libpcm8pp/lib
 
 # *.c ソースファイル
 C_SRCS = crtc.c picojpeg.c jpeg_decode.c flac.c flac_decode.c main.c
@@ -48,7 +49,7 @@ ASM_SRCS = cp932rsc.s
 HEADER_SRCS = cp932rsc.h crtc.h picojpeg.h jpeg_decode.h flac.h flac_decode.h hflap.h
 
 # リンク対象のライブラリファイル
-LIBS = -ldos -liocs -lutf8 -lhimem -lpcm8a -lpcm8pp
+LIBS = -ldos -liocs -lj -lutf8 -lhimem -lpcm8a -lpcm8pp
 
 # 中間ファイル生成用ディレクトリ
 INTERMEDIATE_DIR_000 = _build000/elf2x68k

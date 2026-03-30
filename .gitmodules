@@ -10,3 +10,6 @@
 [submodule "libs/libpcm8pp"]
 	path = libs/libpcm8pp
 	url = https://github.com/tantanGH/libpcm8pp.git
+[submodule "libs/libj"]
+	path = libs/libj
+	url = https://github.com/tantanGH/libj.git
