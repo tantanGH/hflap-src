@@ -82,6 +82,7 @@ static void abort_application() {
     while (rct != NULL) {
       if (rct->buffer != NULL) {
         himem_free(rct->buffer);
+        rct->buffer = NULL;
       }
       CHAIN_TABLE* pre_rct = rct;
       rct = rct->next;
@@ -96,6 +97,7 @@ static void abort_application() {
     while (rct != NULL) {
       if (rct->buffer != NULL) {
         himem_free(rct->buffer);
+        rct->buffer = NULL;
       }
       CHAIN_TABLE_EX* pre_rct = rct;
       rct = rct->next;
@@ -125,7 +127,7 @@ static void abort_application() {
   // flush key buffer
   KFLUSHIO(0xff);
 
-  printf("Aborted.\n");
+  B_PRINT("Aborted.\r\n");
 
   exit(1);
 }
@@ -308,7 +310,7 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
 
   // credit
   if (pic_brightness == 0) {
-    printf("HFLAP.X - High Memory FLAC player for X680x0 version " VERSION " by tantan\n");
+    B_PRINT("HFLAP.X - High Memory FLAC player for X680x0 version " VERSION " by tantan\r\n");
   }
 
   // reset PCM8A/PCM8PP
@@ -348,6 +350,10 @@ loop:
   // current chain table entries
   CHAIN_TABLE* cur_chain_table = NULL;
   CHAIN_TABLE_EX* cur_chain_table_ex = NULL;
+
+  // reclaim chain table entries
+  CHAIN_TABLE* reclaim_chain_table = NULL;
+  CHAIN_TABLE_EX* reclaim_chain_table_ex = NULL;
 
   // file read pointer
   //FILE* fp = NULL;
@@ -474,36 +480,49 @@ try:
   // describe flac attributes
   if (first_play || pic_brightness > 0) {
 
-    printf("\n");
+    uint8_t mes[256];
 
-    printf("File name      : %s\n", flac_file_name);
-    printf("Data size      : %d [bytes]\n", flac_data_size);
-    printf("Data format    : %s\n", "FLAC");
+    B_PRINT("\r\n");
 
-    printf("PCM driver     : %s (volume:%d)\n", 
+    sprintf(mes,"File name      : %s\r\n", flac_file_name);
+    B_PRINT(mes);
+    sprintf(mes,"Data size      : %d [bytes]\r\n", flac_data_size);
+    B_PRINT(mes);
+    sprintf(mes,"Data format    : %s\r\n", "FLAC");
+    B_PRINT(mes);
+
+    sprintf(mes,"PCM driver     : %s (volume:%d)\r\n", 
               playback_driver == DRIVER_PCM8PP ? "PCM8PP" : 
               playback_driver == DRIVER_PCM8A  ? "PCM8A"  : "-", 
               playback_volume);
+    B_PRINT(mes);
 
-    printf("FLAC frequency : %d [Hz]\n", flac_decoder.sample_rate);
-    printf("FLAC channels  : %s\n", flac_decoder.channels == 1 ? "mono" : "stereo");
-    printf("FLAC bit depth : %d [bits]\n", flac_decoder.bps);
-//    printf("FLAC length    : %ld [secs]\n", flac_decoder.num_samples);
+    sprintf(mes,"FLAC frequency : %d [Hz]\r\n", flac_decoder.sample_rate);
+    B_PRINT(mes);
+    sprintf(mes,"FLAC channels  : %s\r\n", flac_decoder.channels == 1 ? "mono" : "stereo");
+    B_PRINT(mes);
+    sprintf(mes,"FLAC bit depth : %d [bits]\r\n", flac_decoder.bps);
+    B_PRINT(mes);
+//    sprintf(mes,"FLAC length    : %ld [secs]\r\n", flac_decoder.num_samples);
 
     if (flac_decoder.tag_vendor != NULL) {
-      printf("FLAC vendor    : %s\n", flac_decoder.tag_vendor);
+      sprintf(mes,"FLAC vendor    : %s\r\n", flac_decoder.tag_vendor);
+      B_PRINT(mes);
     }
     if (flac_decoder.tag_title != NULL) {
-      printf("FLAC title     : %s\n", flac_decoder.tag_title);
+      sprintf(mes,"FLAC title     : %s\r\n", flac_decoder.tag_title);
+      B_PRINT(mes);
     }
     if (flac_decoder.tag_artist != NULL) {
-      printf("FLAC artist    : %s\n", flac_decoder.tag_artist);
+      sprintf(mes,"FLAC artist    : %s\r\n", flac_decoder.tag_artist);
+      B_PRINT(mes);
     }
     if (flac_decoder.tag_album != NULL) {
-      printf("FLAC album     : %s\n", flac_decoder.tag_album);
+      sprintf(mes,"FLAC album     : %s\r\n", flac_decoder.tag_album);
+      B_PRINT(mes);
     }
 
-    printf("\n");
+    B_PRINT("\r\n");
 
     first_play = 0;
   }
@@ -606,6 +625,11 @@ try:
         cur_chain_table = ct;
       }
 
+      // reclaim chain table top entry
+      if (reclaim_chain_table == NULL) {
+        reclaim_chain_table = ct;
+      }
+
       num_chains++;
 
     }
@@ -706,6 +730,11 @@ try:
         cur_chain_table_ex->next = ct;
         cur_chain_table_ex = ct;
       }
+      
+      // reclaim chain table top entry
+      if (reclaim_chain_table_ex == NULL) {
+        reclaim_chain_table_ex = ct;
+      }
 
       num_chains++;
 
@@ -713,7 +742,7 @@ try:
 
     // check shift key to exit
     if (B_SFTSNS() & 0x01) {
-      printf("\r\x1b[KCanceled.\n");
+      B_PRINT("\r\x1b[KCanceled.\r\n");
       goto exit;
     }
 
@@ -763,8 +792,8 @@ try:
 
   }
 
-  printf("\r\x1b[0K\x1bM");
-  printf("\nNow playing ... push [ESC]/[Q] key to quit. [SPACE] to pause.\x1b[0K\n");
+  B_PRINT("\r\x1b[0K\x1bM");
+  B_PRINT("\r\nNow playing ... push [ESC]/[Q] key to quit. [SPACE] to pause.\x1b[0K\r\n");
 
   int16_t paused = 0;
 
@@ -812,7 +841,9 @@ try:
           break;
         } else {
           // in case playback is stopped but not reached to the end, buffer underrun is observed.
-          printf("\n%s\n", cp932rsc_buffer_underrun);
+          uint8_t mes[256];
+          sprintf(mes,"\r\n%s\r\n", cp932rsc_buffer_underrun);
+          B_PRINT(mes);
         }
       }
     }
@@ -921,6 +952,11 @@ try:
         int16_t dt = num_chains - block_counter;
         if (dt >= buffer_delta) {
           if (!quiet_mode) B_PRINT(">");
+          if (reclaim_chain_table->buffer != NULL) {    // reclaim buffer memory
+            himem_free(reclaim_chain_table->buffer);
+            reclaim_chain_table->buffer = NULL;
+            reclaim_chain_table = reclaim_chain_table->next;
+          }
         } else {
           if (!quiet_mode) B_PRINT("*");
           buffer_delta = dt;
@@ -1033,6 +1069,11 @@ try:
         int16_t dt = num_chains - (block_counter_ofs + pcm8pp_get_block_counter(0));
         if (dt >= buffer_delta) {
           if (!quiet_mode) B_PRINT(">");
+          if (reclaim_chain_table_ex->buffer != NULL) {    // reclaim buffer memory
+            himem_free(reclaim_chain_table_ex->buffer);
+            reclaim_chain_table_ex->buffer = NULL;
+            reclaim_chain_table_ex = reclaim_chain_table_ex->next;
+          }
         } else {
           if (!quiet_mode) B_PRINT("*");
           buffer_delta = dt;
@@ -1107,6 +1148,7 @@ catch:
     while (rct != NULL) {
       if (rct->buffer != NULL) {
         himem_free(rct->buffer);
+        rct->buffer = NULL;
       }
       CHAIN_TABLE* pre_rct = rct;
       rct = rct->next;
@@ -1121,6 +1163,7 @@ catch:
     while (rct != NULL) {
       if (rct->buffer != NULL) {
         himem_free(rct->buffer);
+        rct->buffer = NULL;
       }
       CHAIN_TABLE_EX* pre_rct = rct;
       rct = rct->next;
@@ -1144,18 +1187,7 @@ exit:
   // screen clear
   if (pic_brightness > 0) {
 
-    SCROLL(0, 0, 0);
-    SCROLL(1, 0, 0);
-    SCROLL(2, 0, 0);
-    SCROLL(3, 0, 0);
-
-    struct TXFILLPTR txfil = { 2, 0, 0, 768, 512, 0x0000 };
-    TXFILL(&txfil);
-
-    TPALET2(4,-2);
-    TPALET2(5,-2);
-    TPALET2(6,-2);
-    TPALET2(7,-2);
+    jpeg_reset_text_masks();
 
     C_CLS_AL();
     G_CLR_ON();
@@ -1178,7 +1210,9 @@ exit:
 
   // print error message
   if (error_mes[0] != '\0') {
-    printf("error: %s\n", error_mes);
+    uint8_t mes[256];
+    sprintf(mes,"error: %s\r\n", error_mes);
+    B_PRINT(mes);
   }
 
   return rc;
