@@ -397,7 +397,9 @@ try:
   //SEEK(fd, skip_offset, 0);
 
   // read whole flac file content into high memory
-  printf("\rLoading FLAC file...\x1b[0K");
+  if (!continuous_read) {
+    B_PRINT("\rLoading FLAC file...\x1b[0K");
+  }
   if (staging_file_read) {
     // use staging buffer on main memory (for SCSI disk)
     fread_staging_buffer = malloc(FREAD_STAGING_BUFFER_BYTES);   // allocate in main memory
@@ -429,7 +431,7 @@ try:
     CLOSE(fd);
     fd = -1;
   }
-  printf("\r\x1b[0K");
+  B_PRINT("\r\x1b[0K");
 
   // check eye catch
   if (memcmp(fread_buffer, "fLaC", 4) != 0) {
@@ -438,12 +440,12 @@ try:
   }
 
   // setup flac decoder
-  printf("\rLoading tags and picture image...\x1b[0K");
+  B_PRINT("\rLoading tags and picture image...\x1b[0K");
   if (flac_decode_setup(&flac_decoder, fread_buffer, flac_data_size, continuous_read ? fread_buffer_len : 0, pic_brightness, 0) != 0) {
     strcpy(error_mes, cp932rsc_flac_decoder_setup_error);
     goto catch;
   }
-  printf("\r\x1b[0K");
+  B_PRINT("\r\x1b[0K");
 
   // adjust scroll position
   if (pic_brightness > 0) {
