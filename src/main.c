@@ -514,7 +514,9 @@ try:
 
     if (end_flag) break;
 
-    printf("\rNow buffering (%d/%d) ... [SHIFT] key to cancel.", i+1, num_buffers);
+    uint8_t mes[256];
+    sprintf(mes, "\rNow buffering (%d/%d) ... [SHIFT] key to cancel.", i+1, num_buffers);
+    B_PRINT(mes);
 
     if (playback_driver == DRIVER_PCM8A) {
 
