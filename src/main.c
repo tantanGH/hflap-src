@@ -942,7 +942,7 @@ try:
         CHAIN_TABLE* rct = g_init_chain_table;
         CHAIN_TABLE* resume_chain_table = NULL;
         while (rct != NULL) {
-          if (rct->buffer <= cur_pcm8a_addr && cur_pcm8a_addr < (rct->buffer + rct->buffer_len * 2)) {
+          if (rct->buffer != NULL && rct->buffer <= cur_pcm8a_addr && cur_pcm8a_addr < (rct->buffer + rct->buffer_len * 2)) {
             resume_chain_table = rct;
             break;
           }
