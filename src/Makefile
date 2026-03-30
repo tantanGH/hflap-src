@@ -7,7 +7,7 @@ endif
 .SUFFIXES:
 
 # バージョン
-VERSION = 065
+VERSION = 070
 
 # 実行ファイル名
 TARGET_FILE_000 = HFLAP.X
@@ -15,7 +15,7 @@ TARGET_FILE_030 = HFLAP030.X
 TARGET_FILE_060 = HFLAP060.X
 
 # ドキュメントファイル名
-DOCUMENT_FILE = HFLAP.DOC
+DOCUMENT_FILE = HFLAP.TXT
 
 # 配布パッケージファイル名 
 PACKAGE_FILE = ../HFLAP$(VERSION).ZIP
@@ -35,23 +35,27 @@ INCLUDE_FLAGS = -I${ELF2X68K_DIR}/lib/gcc/m68k-elf/13.4.0/include \
 				-I../libs/libutf8/include \
 				-I../libs/libjpeg/include \
 				-I../libs/libpcm8a/include \
-				-I../libs/libpcm8pp/include
+				-I../libs/libpcm8pp/include \
+				-I../libs/libfoxenflac-x68k/include
 
 # ライブラリ検索パス
 LDFLAGS = -L../libs/libhimem/lib -L../libs/libj/lib -L../libs/libutf8/lib \
-		  -L../libs/libjpeg/lib -L../libs/libpcm8a/lib -L../libs/libpcm8pp/lib
+		  -L../libs/libjpeg/lib -L../libs/libpcm8a/lib -L../libs/libpcm8pp/lib \
+		  -L../libs/libfoxenflac-x68k/lib
 
 # *.c ソースファイル
-C_SRCS = flac.c flac_decode.c main.c
+C_SRCS = flac_decode.c main.c
 
 # *.s ソースファイル
 ASM_SRCS = cp932rsc.s
 
 # *.h source files
-HEADER_SRCS = cp932rsc.h flac.h flac_decode.h hflap.h
+HEADER_SRCS = cp932rsc.h keyboard.h flac_decode.h hflap.h
 
 # リンク対象のライブラリファイル
-LIBS = -ldos -liocs -lhimem -lj -lutf8 -ljpeg -lpcm8a -lpcm8pp
+LIBS_000 = -ldos -liocs -lhimem -lj -lutf8 -ljpeg -lpcm8a -lpcm8pp -lfoxenflac
+LIBS_030 = -ldos -liocs -lhimem -lj -lutf8 -ljpeg -lpcm8a -lpcm8pp -lfoxenflac030
+LIBS_060 = -ldos -liocs -lhimem -lj -lutf8 -ljpeg -lpcm8a -lpcm8pp -lfoxenflac060
 
 # 中間ファイル生成用ディレクトリ
 INTERMEDIATE_DIR_000 = _build000/elf2x68k
@@ -90,13 +94,13 @@ clean :
 # 実行ファイルの生成
 ${INTERMEDIATE_DIR_000}/$(TARGET_FILE_000) : $(OBJS_000)
 	mkdir -p $(INTERMEDIATE_DIR_000)
-	$(CC) $(COMMON_FLAGS_000) $(LDFLAGS) -o ${INTERMEDIATE_DIR_000}/${TARGET_FILE_000} $(OBJS_000) $(LIBS)
+	$(CC) $(COMMON_FLAGS_000) $(LDFLAGS) -o ${INTERMEDIATE_DIR_000}/${TARGET_FILE_000} $(OBJS_000) $(LIBS_000)
 ${INTERMEDIATE_DIR_030}/$(TARGET_FILE_030) : $(OBJS_030)
 	mkdir -p $(INTERMEDIATE_DIR_030)
-	$(CC) $(COMMON_FLAGS_030) $(LDFLAGS) -o ${INTERMEDIATE_DIR_030}/${TARGET_FILE_030} $(OBJS_030) $(LIBS)
+	$(CC) $(COMMON_FLAGS_030) $(LDFLAGS) -o ${INTERMEDIATE_DIR_030}/${TARGET_FILE_030} $(OBJS_030) $(LIBS_030)
 ${INTERMEDIATE_DIR_060}/$(TARGET_FILE_060) : $(OBJS_060)
 	mkdir -p $(INTERMEDIATE_DIR_060)
-	$(CC) $(COMMON_FLAGS_060) $(LDFLAGS) -o ${INTERMEDIATE_DIR_060}/${TARGET_FILE_060} $(OBJS_060) $(LIBS)
+	$(CC) $(COMMON_FLAGS_060) $(LDFLAGS) -o ${INTERMEDIATE_DIR_060}/${TARGET_FILE_060} $(OBJS_060) $(LIBS_060)
 
 # *.c ソースのコンパイル
 $(INTERMEDIATE_DIR_000)/%.o : %.c Makefile $(HEADER_SRCS)

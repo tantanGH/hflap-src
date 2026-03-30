@@ -16,3 +16,6 @@
 [submodule "libs/libjpeg"]
 	path = libs/libjpeg
 	url = https://github.com/tantanGH/libjpeg.git
+[submodule "libs/libfoxenflac-x68k"]
+	path = libs/libfoxenflac-x68k
+	url = https://github.com/tantanGH/libfoxenflac-x68k.git
