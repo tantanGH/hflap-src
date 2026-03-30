@@ -9,13 +9,15 @@
 // himem
 #include <himem.h>
 
+// jpeg
+#include <jpeg.h>
+
 // pcm driver
 #include <pcm8a.h>
 #include <pcm8pp.h>
 
 // devices
 #include "keyboard.h"
-#include "crtc.h"
 
 // resource
 #include "cp932rsc.h"
@@ -322,9 +324,9 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
   C_CUROFF();
 
   // enter supervisor mode if needed
-  if (pic_brightness > 0) {
-    B_SUPER(0);
-  }
+//  if (pic_brightness > 0) {
+//    B_SUPER(0);
+//  }
 
   // display flac attribute at first play
   int16_t first_play = 1;
@@ -334,19 +336,12 @@ loop:
   // init crtc if album art is required
   if (pic_brightness > 0) {
 
-    G_CLR_ON();
-    crtc_set_extra_mode(0);
+    jpeg_crtmod_768x512_65536();  // 768x512,65536 color mode
 
     C_FNKMOD(3);    // function key display off
     C_CLS_AL();
 
-    TPALET2(4, 0x0001);
-    TPALET2(5, TPALET2(1,-1));
-    TPALET2(6, TPALET2(2,-1));
-    TPALET2(7, TPALET2(3,-1));
-
-    struct TXFILLPTR txfil = { 2, 0, 0, 768, 512, 0xffff };
-    TXFILL(&txfil);
+    jpeg_fill_text_masks();
 
   }
 
@@ -452,12 +447,7 @@ try:
 
   // adjust scroll position
   if (pic_brightness > 0) {
-    SCROLL(0, 512-128, 0);
-    SCROLL(1, 512-128, 0);
-    SCROLL(2, 512-128, 0);
-    SCROLL(3, 512-128, 0);
-    struct TXFILLPTR txfil = { 2, 128, 0, 512, 512, 0x0000 };
-    TXFILL(&txfil);
+    jpeg_open_text_masks();
   }
 
   // check bps
