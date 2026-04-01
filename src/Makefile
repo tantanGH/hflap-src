@@ -7,7 +7,7 @@ endif
 .SUFFIXES:
 
 # バージョン
-VERSION = 076
+VERSION = 080
 
 # 実行ファイル名
 TARGET_FILE_000 = HFLAP.X
