@@ -2,9 +2,11 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <jstring.h>
-#include <doslib.h>
-#include <iocslib.h>
+#include <cmdline.h>
+#include <x68k/dos.h>
+#include <x68k/iocs.h>
 
 // himem
 #include <himem.h>
@@ -31,8 +33,8 @@
 //
 //  abort vectors
 //
-static uint32_t g_abort_vector1;
-static uint32_t g_abort_vector2;
+static void* g_abort_vector1;
+static void* g_abort_vector2;
 
 //
 //  chain table top
@@ -57,11 +59,11 @@ static void* fread_staging_buffer = NULL;
 //
 //  abort vector handler
 //
-static void abort_application() {
+static __attribute__((interrupt)) void abort_application() {
 
   // resume abort vectors
-  INTVCS(0xFFF1, (int8_t*)g_abort_vector1);
-  INTVCS(0xFFF2, (int8_t*)g_abort_vector2);  
+  _dos_intvcs(0xFFF1, g_abort_vector1);
+  _dos_intvcs(0xFFF2, g_abort_vector2);  
 
   // stop pcm8a
   if (pcm8a_isavailable()) {
@@ -82,6 +84,7 @@ static void abort_application() {
     while (rct != NULL) {
       if (rct->buffer != NULL) {
         himem_free(rct->buffer);
+        rct->buffer = NULL;
       }
       CHAIN_TABLE* pre_rct = rct;
       rct = rct->next;
@@ -96,6 +99,7 @@ static void abort_application() {
     while (rct != NULL) {
       if (rct->buffer != NULL) {
         himem_free(rct->buffer);
+        rct->buffer = NULL;
       }
       CHAIN_TABLE_EX* pre_rct = rct;
       rct = rct->next;
@@ -115,17 +119,17 @@ static void abort_application() {
   }
 
   // cursor on
-  C_CURON();
+  _dos_c_curon();
 
   // funckey mode
   if (g_funckey_mode >= 0) {
-    C_FNKMOD(g_funckey_mode);
+    _dos_c_fnkmod(g_funckey_mode);
   }
   
   // flush key buffer
-  KFLUSHIO(0xff);
+  _dos_kflushio(0xff);
 
-  printf("Aborted.\n");
+  _iocs_b_print(cp932rsc_aborted);
 
   exit(1);
 }
@@ -137,15 +141,15 @@ static int32_t get_mpu_type() {
 
   int32_t mpu_type = 0;
 
-  uint32_t rom_version = ((uint32_t)ROMVER()) >> 24;
+  uint32_t rom_version = ((uint32_t)(_iocs_romver())) >> 24;
   if (rom_version <= 0x12) goto exit;
 
-  struct REGS in_regs = { 0 };
-  struct REGS out_regs = { 0 };
+  struct iocs_regs in_regs = { 0 };
+  struct iocs_regs out_regs = { 0 };
 
   in_regs.d0 = 0xac;      // IOCS _SYS_STAT
 
-  TRAP15(&in_regs, &out_regs);
+  _iocs_trap15(&in_regs, &out_regs);
 
   mpu_type = out_regs.d0 & 0xff;
 
@@ -173,20 +177,20 @@ static void show_help_message() {
 //
 //  main
 //
-int32_t main(int32_t argc, uint8_t* argv[]) {
+int32_t main(int32_t argc_, uint8_t* argv_[]) {
 
   // default return code
   int32_t rc = 1;
 
   // preserve abort vectors
-  g_abort_vector1 = INTVCS(0xFFF1, (int8_t*)abort_application);
-  g_abort_vector2 = INTVCS(0xFFF2, (int8_t*)abort_application);  
+  g_abort_vector1 = _dos_intvcs(0xFFF1, abort_application);
+  g_abort_vector2 = _dos_intvcs(0xFFF2, abort_application);  
 
   // preserve function key mode
-  g_funckey_mode = C_FNKMOD(-1);
+  g_funckey_mode = _dos_c_fnkmod(-1);
 
   // command line options
-  //uint8_t* flac_file_name = NULL;
+  uint8_t* flac_file_name = NULL;
   int16_t playback_volume = DEFAULT_VOLUME;
   int16_t loop_count = 1;
   int16_t num_buffers = DEFAULT_BUFFERS;
@@ -201,12 +205,8 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
   int32_t num_chains = 0;
 
   // exit error message
-  uint8_t error_mes[ 256 ];
+  static uint8_t error_mes[ 256 ];
   error_mes[0] = '\0';
-
-  // non-quoted filename
-  uint8_t flac_file_name[ MAX_PATH_LEN ];
-  flac_file_name[0] = '\0';
 
 #ifdef __mc68060__
   if (get_mpu_type() < 6) {
@@ -219,6 +219,10 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
     goto exit;
   }
 #endif
+
+  // parse command line with quote consideration
+  int32_t argc = cmdline_get_argc();
+  char** argv = cmdline_get_argv();
 
   // parse command line options
   for (int16_t i = 1; i < argc; i++) {
@@ -257,23 +261,11 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
         goto exit;
       }
     } else {
-      if (flac_file_name[0] != '\0') {
+      if (flac_file_name != NULL) {
         strcpy(error_mes, cp932rsc_too_many_files);
         goto exit;
       }
-      if (argv[i][0] == '"' || argv[i][0] == '\'') {
-        // detected filename quotation
-        struct PDBADR* pdb = GETPDB();
-        uint8_t* q0 = jstrchr((uint8_t*)(pdb->comline),argv[i][0]);
-        uint8_t* q1 = jstrrchr((uint8_t*)(pdb->comline),argv[i][0]);
-        if (q0 < q1) {
-          memcpy(flac_file_name, q0 + 1, q1 - q0 - 1);
-          flac_file_name[q1 - q0 - 1] = '\0';
-        }
-        break;  // no more parsing
-      } else {
-        strcpy(flac_file_name, argv[i]);
-      }
+      flac_file_name = argv[i];
 //      if (strlen(flac_file_name) < 5 || stricmp(flac_file_name + strlen(flac_file_name) - 4, ".fla") != 0) {
 //        strcpy(error_mes, cp932rsc_not_flac_file);
 //        goto exit;
@@ -282,7 +274,7 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
   }
 
   // flac file is specified?
-  if (flac_file_name[0] == '\0' || strlen(flac_file_name) < 5) {
+  if (flac_file_name == NULL || strlen(flac_file_name) < 5) {
     show_help_message();
     goto exit;
   }
@@ -308,7 +300,7 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
 
   // credit
   if (pic_brightness == 0) {
-    printf("HFLAP.X - High Memory FLAC player for X680x0 version " VERSION " by tantan\n");
+    _iocs_b_print("HFLAP.X - High Memory FLAC player for X680x0 version " VERSION " by tantan\r\n");
   }
 
   // reset PCM8A/PCM8PP
@@ -321,12 +313,7 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
   }
 
   // cursor off
-  C_CUROFF();
-
-  // enter supervisor mode if needed
-//  if (pic_brightness > 0) {
-//    B_SUPER(0);
-//  }
+  _dos_c_curoff();
 
   // display flac attribute at first play
   int16_t first_play = 1;
@@ -338,8 +325,8 @@ loop:
 
     jpeg_crtmod_768x512_65536();  // 768x512,65536 color mode
 
-    C_FNKMOD(3);    // function key display off
-    C_CLS_AL();
+    _dos_c_fnkmod(3);    // function key display off
+    _dos_c_cls_al();
 
     jpeg_fill_text_masks();
 
@@ -349,8 +336,12 @@ loop:
   CHAIN_TABLE* cur_chain_table = NULL;
   CHAIN_TABLE_EX* cur_chain_table_ex = NULL;
 
-  // file read pointer
-  //FILE* fp = NULL;
+  // reclaim chain table entries
+  CHAIN_TABLE* reclaim_chain_table = NULL;
+  CHAIN_TABLE_EX* reclaim_chain_table_ex = NULL;
+  int32_t reclaim_block_counter = 0;
+
+  // file read handle
   int32_t fd = -1;
 
 try:
@@ -363,7 +354,7 @@ try:
   }
 
   // open input file
-  fd = OPEN(flac_file_name, 0);
+  fd = _dos_open(flac_file_name, 0);
   if (fd < 0) {
     strcpy(error_mes, cp932rsc_file_open_error);
     goto catch;
@@ -377,8 +368,8 @@ try:
   }
 
   // obtain data content size
-  uint32_t flac_data_size = SEEK(fd, 0, 2) - skip_offset;
-  SEEK(fd, skip_offset, 0);
+  uint32_t flac_data_size = _dos_seek(fd, 0, 2) - skip_offset;
+  _dos_seek(fd, skip_offset, 0);
 
   // allocate file read buffer
   size_t fread_buffer_len = continuous_read ? CONTINUOUS_FLAC_BUFFER_BYTES : flac_data_size;
@@ -388,17 +379,9 @@ try:
     goto catch;
   }
 
-  // close standard file handle
-  //fclose(fp);
-  //fp = NULL;
-
-  // reopen the file using DOS call
-  //fd = OPEN(flac_file_name, 0);
-  //SEEK(fd, skip_offset, 0);
-
   // read whole flac file content into high memory
   if (!continuous_read) {
-    B_PRINT("\rLoading FLAC file...\x1b[0K");
+    _iocs_b_print(cp932rsc_now_loading);
   }
   if (staging_file_read) {
     // use staging buffer on main memory (for SCSI disk)
@@ -409,7 +392,7 @@ try:
     }    
     size_t read_len = 0; 
     do {
-      size_t len = READ(fd, fread_staging_buffer, FREAD_STAGING_BUFFER_BYTES);
+      size_t len = _dos_read(fd, fread_staging_buffer, FREAD_STAGING_BUFFER_BYTES);
       memcpy(fread_buffer + read_len, fread_staging_buffer, len);
       read_len += len;
     } while (read_len < fread_buffer_len);
@@ -421,17 +404,15 @@ try:
     do {
 //      size_t read_size = (flac_data_size - read_len) < FREAD_CHUNK_BYTES ? (flac_data_size - read_len) : FREAD_CHUNK_BYTES;
       size_t read_size = (fread_buffer_len - read_len) < FREAD_CHUNK_BYTES ? (fread_buffer_len - read_len) : FREAD_CHUNK_BYTES;
-      size_t len = READ(fd, fread_buffer + read_len, read_size);
+      size_t len = _dos_read(fd, fread_buffer + read_len, read_size);
       read_len += len;
     } while (read_len < fread_buffer_len);
   }
   if (continuous_read == 0) {
-    //fclose(fp);
-    //fp = NULL;
-    CLOSE(fd);
+    _dos_close(fd);
     fd = -1;
   }
-  B_PRINT("\r\x1b[0K");
+  _iocs_b_print(cp932rsc_erase_line);
 
   // check eye catch
   if (memcmp(fread_buffer, "fLaC", 4) != 0) {
@@ -440,12 +421,12 @@ try:
   }
 
   // setup flac decoder
-  B_PRINT("\rLoading tags and picture image...\x1b[0K");
+  _iocs_b_print(cp932rsc_now_loading_picture);
   if (flac_decode_setup(&flac_decoder, fread_buffer, flac_data_size, continuous_read ? fread_buffer_len : 0, pic_brightness, 0) != 0) {
     strcpy(error_mes, cp932rsc_flac_decoder_setup_error);
     goto catch;
   }
-  B_PRINT("\r\x1b[0K");
+  _iocs_b_print(cp932rsc_erase_line);
 
   // adjust scroll position
   if (pic_brightness > 0) {
@@ -474,36 +455,48 @@ try:
   // describe flac attributes
   if (first_play || pic_brightness > 0) {
 
-    printf("\n");
+    static uint8_t mes[256];
 
-    printf("File name      : %s\n", flac_file_name);
-    printf("Data size      : %d [bytes]\n", flac_data_size);
-    printf("Data format    : %s\n", "FLAC");
+    _iocs_b_print(cp932rsc_crlf);
 
-    printf("PCM driver     : %s (volume:%d)\n", 
+    sprintf(mes, cp932rsc_flac_file_name, flac_file_name);
+    _iocs_b_print(mes);
+    sprintf(mes, cp932rsc_flac_data_size, flac_data_size);
+    _iocs_b_print(mes);
+    sprintf(mes, cp932rsc_flac_data_format, "FLAC");
+    _iocs_b_print(mes);
+
+    sprintf(mes, cp932rsc_pcm_driver, 
               playback_driver == DRIVER_PCM8PP ? "PCM8PP" : 
               playback_driver == DRIVER_PCM8A  ? "PCM8A"  : "-", 
               playback_volume);
+    _iocs_b_print(mes);
 
-    printf("FLAC frequency : %d [Hz]\n", flac_decoder.sample_rate);
-    printf("FLAC channels  : %s\n", flac_decoder.channels == 1 ? "mono" : "stereo");
-    printf("FLAC bit depth : %d [bits]\n", flac_decoder.bps);
-//    printf("FLAC length    : %ld [secs]\n", flac_decoder.num_samples);
+    sprintf(mes, cp932rsc_flac_frequency, flac_decoder.sample_rate);
+    _iocs_b_print(mes);
+    sprintf(mes, cp932rsc_flac_channels, flac_decoder.channels == 1 ? "mono" : "stereo");
+    _iocs_b_print(mes);
+    sprintf(mes, cp932rsc_flac_bit_depth, flac_decoder.bps);
+    _iocs_b_print(mes);
 
     if (flac_decoder.tag_vendor != NULL) {
-      printf("FLAC vendor    : %s\n", flac_decoder.tag_vendor);
+      sprintf(mes, cp932rsc_flac_vendor, flac_decoder.tag_vendor);
+      _iocs_b_print(mes);
     }
     if (flac_decoder.tag_title != NULL) {
-      printf("FLAC title     : %s\n", flac_decoder.tag_title);
+      sprintf(mes, cp932rsc_flac_title, flac_decoder.tag_title);
+      _iocs_b_print(mes);
     }
     if (flac_decoder.tag_artist != NULL) {
-      printf("FLAC artist    : %s\n", flac_decoder.tag_artist);
+      sprintf(mes, cp932rsc_flac_artist, flac_decoder.tag_artist);
+      _iocs_b_print(mes);
     }
     if (flac_decoder.tag_album != NULL) {
-      printf("FLAC album     : %s\n", flac_decoder.tag_album);
+      sprintf(mes, cp932rsc_flac_album, flac_decoder.tag_album);
+      _iocs_b_print(mes);
     }
 
-    printf("\n");
+    _iocs_b_print(cp932rsc_crlf);
 
     first_play = 0;
   }
@@ -514,7 +507,9 @@ try:
 
     if (end_flag) break;
 
-    printf("\rNow buffering (%d/%d) ... [SHIFT] key to cancel.", i+1, num_buffers);
+    static uint8_t mes[256];
+    sprintf(mes, cp932rsc_now_buffering, i+1, num_buffers);
+    _iocs_b_print(mes);
 
     if (playback_driver == DRIVER_PCM8A) {
 
@@ -543,7 +538,7 @@ try:
             }
             size_t done = 0;
             do {
-              size_t len = READ(fd, fread_staging_buffer, read_size - done);
+              size_t len = _dos_read(fd, fread_staging_buffer, read_size - done);
               if (len == 0) break;
               memcpy(fread_buffer + remain_len + done, fread_staging_buffer, len);
               done += len;
@@ -551,7 +546,7 @@ try:
             free(fread_staging_buffer);
             fread_staging_buffer = NULL;
           } else {
-            size_t len = READ(fd, fread_buffer + remain_len, read_size);
+            size_t len = _dos_read(fd, fread_buffer + remain_len, read_size);
           }
         }
       }
@@ -604,6 +599,11 @@ try:
         cur_chain_table = ct;
       }
 
+      // reclaim chain table top entry
+      if (reclaim_chain_table == NULL) {
+        reclaim_chain_table = ct;
+      }
+
       num_chains++;
 
     }
@@ -635,7 +635,7 @@ try:
             }    
             size_t done = 0;
             do {
-              size_t len = READ(fd, fread_staging_buffer, read_size - done);
+              size_t len = _dos_read(fd, fread_staging_buffer, read_size - done);
               if (len == 0) break;
               memcpy(fread_buffer + remain_len + done, fread_staging_buffer, len);
               done += len;
@@ -643,7 +643,7 @@ try:
             free(fread_staging_buffer);
             fread_staging_buffer = NULL;
           } else {
-            size_t len = READ(fd, fread_buffer + remain_len, read_size);
+            size_t len = _dos_read(fd, fread_buffer + remain_len, read_size);
           }
         }
       }
@@ -704,14 +704,19 @@ try:
         cur_chain_table_ex->next = ct;
         cur_chain_table_ex = ct;
       }
+      
+      // reclaim chain table top entry
+      if (reclaim_chain_table_ex == NULL) {
+        reclaim_chain_table_ex = ct;
+      }
 
       num_chains++;
 
     }
 
     // check shift key to exit
-    if (B_SFTSNS() & 0x01) {
-      printf("\r\x1b[KCanceled.\n");
+    if (_iocs_b_sftsns() & 0x01) {
+      _iocs_b_print(cp932rsc_canceled);
       goto exit;
     }
 
@@ -761,24 +766,25 @@ try:
 
   }
 
-  printf("\r\x1b[0K\x1bM");
-  printf("\nNow playing ... push [ESC]/[Q] key to quit. [SPACE] to pause.\x1b[0K\n");
+  _iocs_b_print(cp932rsc_erase_line_and_up);
+  _iocs_b_print(cp932rsc_now_playing);
 
   int16_t paused = 0;
 
   // dummy wait to make sure DMAC start (200 msec)
-  for (int32_t t0 = ONTIME(); ONTIME() < t0 + 20;) {}
+  //for (int32_t t0 = (_iocs_ontime()).sec; (_iocs_ontime()).sec < t0 + 20;) {}
+  usleep(200000);
 
   int32_t block_counter_ofs = 0;
-  int16_t buffer_delta = num_buffers;
+  int32_t buffer_delta = num_buffers;
 
   for (;;) {
    
     // check esc key to exit, space key to pause
-    if (B_KEYSNS() != 0) {
-      int16_t scan_code = B_KEYINP() >> 8;
+    if (_iocs_b_keysns() != 0) {
+      int16_t scan_code = _iocs_b_keyinp() >> 8;
       if (scan_code == KEY_SCAN_CODE_ESC || scan_code == KEY_SCAN_CODE_Q) {
-        B_PRINT("\r\nStopped.");
+        _iocs_b_print(cp932rsc_stopped);
         rc = 1;
         break;
       } else if (scan_code == KEY_SCAN_CODE_SPACE) {
@@ -805,12 +811,14 @@ try:
       if ((playback_driver == DRIVER_PCM8A  && pcm8a_get_data_length(0)  == 0) ||
           (playback_driver == DRIVER_PCM8PP && pcm8pp_get_data_length(0) == 0)) {
         if (end_flag) { 
-          B_PRINT("\r\nFinished.\r\n");
+          _iocs_b_print(cp932rsc_finished);
           rc = 0;
           break;
         } else {
           // in case playback is stopped but not reached to the end, buffer underrun is observed.
-          printf("\n%s\n", cp932rsc_buffer_underrun);
+          _iocs_b_print(cp932rsc_crlf);
+          _iocs_b_print(cp932rsc_buffer_underrun);
+          _iocs_b_print(cp932rsc_crlf);
         }
       }
     }
@@ -845,7 +853,7 @@ try:
               }    
               size_t done = 0;
               do {
-                size_t len = READ(fd, fread_staging_buffer, read_size - done);
+                size_t len = _dos_read(fd, fread_staging_buffer, read_size - done);
                 if (len == 0) break;
                 memcpy(fread_buffer + remain_len + done, fread_staging_buffer, len);
                 done += len;
@@ -853,9 +861,29 @@ try:
               free(fread_staging_buffer);
               fread_staging_buffer = NULL;
             } else {
-              size_t len = READ(fd, fread_buffer + remain_len, read_size);
+              size_t len = _dos_read(fd, fread_buffer + remain_len, read_size);
             }
           }
+        }
+
+        // check block counter
+        void* cur_pcm8a_addr = pcm8a_get_access_address(0);
+        int32_t block_counter = 0;
+        CHAIN_TABLE* rct = g_init_chain_table;
+        CHAIN_TABLE* resume_chain_table = NULL;
+        while (rct != NULL) {
+          if (rct->buffer != NULL && rct->buffer <= cur_pcm8a_addr && cur_pcm8a_addr < (rct->buffer + rct->buffer_len * 2)) {
+            resume_chain_table = rct;
+            break;
+          }
+          block_counter++;
+          rct = rct->next;
+        }
+        int32_t dt = num_chains - block_counter;
+        if (dt >= num_buffers * 4) {
+          //_iocs_b_print(cp932rsc_progress_wait);
+          usleep(500000);
+          continue;   // too fast decoding
         }
 
         // allocate the next chain table entry
@@ -888,7 +916,7 @@ try:
           himem_free(ct->buffer);
           himem_free(ct);
           end_flag = 1;
-          if (!quiet_mode) B_PRINT("|");
+          if (!quiet_mode) _iocs_b_print(cp932rsc_progress_last);
           continue;
         }
 
@@ -903,24 +931,17 @@ try:
         num_chains++;
 
         // in case any buffered chain is consumed, display '*'. Otherwise display '.'.
-        void* cur_pcm8a_addr = pcm8a_get_access_address(0);
-        int32_t block_counter = 0;
-        CHAIN_TABLE* rct = g_init_chain_table;
-        CHAIN_TABLE* resume_chain_table = NULL;
-        while (rct != NULL) {
-          if (rct->buffer <= cur_pcm8a_addr && cur_pcm8a_addr < (rct->buffer + rct->buffer_len * 2)) {
-            resume_chain_table = rct;
-            break;
-          }
-          block_counter++;
-          rct = rct->next;
-        }
-
-        int16_t dt = num_chains - block_counter;
+        dt = num_chains - block_counter;  // update
         if (dt >= buffer_delta) {
-          if (!quiet_mode) B_PRINT(">");
+          if (!quiet_mode) _iocs_b_print(cp932rsc_progress_normal);
+          if (reclaim_block_counter < block_counter && reclaim_chain_table->buffer != NULL) {    // reclaim buffer memory
+            himem_free(reclaim_chain_table->buffer);
+            reclaim_chain_table->buffer = NULL;
+            reclaim_chain_table = reclaim_chain_table->next;
+            reclaim_block_counter = block_counter;
+          }
         } else {
-          if (!quiet_mode) B_PRINT("*");
+          if (!quiet_mode) _iocs_b_print(cp932rsc_progress_under);
           buffer_delta = dt;
         }
 
@@ -962,7 +983,7 @@ try:
               }    
               size_t done = 0;
               do {
-                size_t len = READ(fd, fread_staging_buffer, read_size - done);
+                size_t len = _dos_read(fd, fread_staging_buffer, read_size - done);
                 if (len == 0) break;
                 memcpy(fread_buffer + remain_len + done, fread_staging_buffer, len);
                 done += len;
@@ -970,9 +991,18 @@ try:
               free(fread_staging_buffer);
               fread_staging_buffer = NULL;
             } else {
-              size_t len = READ(fd, fread_buffer + remain_len, read_size);
+              size_t len = _dos_read(fd, fread_buffer + remain_len, read_size);
             }
           }
+        }
+
+        // check delta
+        int32_t block_counter = pcm8pp_get_block_counter(0);
+        int32_t dt = num_chains - (block_counter_ofs + block_counter);
+        if (dt > num_buffers * 4) {
+          _iocs_b_print(cp932rsc_progress_wait);
+          usleep(500000);
+          continue;  // too fast decoding
         }
 
         // allocate the next chain table entry
@@ -1013,7 +1043,7 @@ try:
           himem_free(ct->buffer);
           himem_free(ct);
           end_flag = 1;
-          if (!quiet_mode) B_PRINT("|");
+          if (!quiet_mode) _iocs_b_print(cp932rsc_progress_last);
           continue;
         }
 
@@ -1028,11 +1058,19 @@ try:
         num_chains++;
 
         // in case any buffered chain is consumed, display '*'. Otherwise display '.'.
-        int16_t dt = num_chains - (block_counter_ofs + pcm8pp_get_block_counter(0));
+        block_counter = pcm8pp_get_block_counter(0);              // update
+        dt = num_chains - (block_counter_ofs + block_counter);    // update
         if (dt >= buffer_delta) {
-          if (!quiet_mode) B_PRINT(">");
+          if (!quiet_mode) _iocs_b_print(cp932rsc_progress_normal);
+          if (reclaim_block_counter < block_counter && reclaim_chain_table_ex->buffer != NULL) {    // reclaim buffer memory
+            himem_free(reclaim_chain_table_ex->buffer);
+            reclaim_chain_table_ex->buffer = NULL;
+            reclaim_chain_table_ex = reclaim_chain_table_ex->next;
+            reclaim_block_counter = block_counter;
+          }
         } else {
-          if (!quiet_mode) B_PRINT("*");
+          //printf("dt=%d,buffer_delta=%d,num_chains=%d,block_counter_ofs=%d,block_counter=%d\n",dt,buffer_delta,num_chains,block_counter_ofs,block_counter);
+          if (!quiet_mode) _iocs_b_print(cp932rsc_progress_under);
           buffer_delta = dt;
         }
 
@@ -1074,15 +1112,12 @@ catch:
   }
 
   // dummy wait to make sure DMAC stop (200 msec)
-  for (int32_t t0 = ONTIME(); ONTIME() < t0 + 20;) {}
+  //for (int32_t t0 = (_iocs_ontime()).sec; (_iocs_ontime()).sec < t0 + 20;) {}
+  usleep(200000);
 
   // close input file if still opened
-//  if (fp != NULL) {
-//    fclose(fp);
-//    fp = NULL;
-//  }
   if (fd != -1) {
-    CLOSE(fd);
+    _dos_close(fd);
     fd = -1;
   }
 
@@ -1105,6 +1140,7 @@ catch:
     while (rct != NULL) {
       if (rct->buffer != NULL) {
         himem_free(rct->buffer);
+        rct->buffer = NULL;
       }
       CHAIN_TABLE* pre_rct = rct;
       rct = rct->next;
@@ -1119,6 +1155,7 @@ catch:
     while (rct != NULL) {
       if (rct->buffer != NULL) {
         himem_free(rct->buffer);
+        rct->buffer = NULL;
       }
       CHAIN_TABLE_EX* pre_rct = rct;
       rct = rct->next;
@@ -1130,53 +1167,42 @@ catch:
   // loop check
   if (rc == 0) {
     if (loop_count == 0 || --loop_count > 0) {
-      B_PRINT("\r\n");
+      _iocs_b_print(cp932rsc_crlf);
       goto loop;
     }
   }
 
-  B_PRINT("\r\n");
+  _iocs_b_print(cp932rsc_crlf);
 
 exit:
 
   // screen clear
   if (pic_brightness > 0) {
-
-    SCROLL(0, 0, 0);
-    SCROLL(1, 0, 0);
-    SCROLL(2, 0, 0);
-    SCROLL(3, 0, 0);
-
-    struct TXFILLPTR txfil = { 2, 0, 0, 768, 512, 0x0000 };
-    TXFILL(&txfil);
-
-    TPALET2(4,-2);
-    TPALET2(5,-2);
-    TPALET2(6,-2);
-    TPALET2(7,-2);
-
-    C_CLS_AL();
-    G_CLR_ON();
+    jpeg_reset_text_masks();
+    _dos_c_cls_al();
+    _iocs_g_clr_on();
   }
 
   // cursor on
-  C_CURON();
+  _dos_c_curon();
 
   // function key mode
   if (g_funckey_mode >= 0) {
-    C_FNKMOD(g_funckey_mode);
+    _dos_c_fnkmod(g_funckey_mode);
   }
 
   // resume abort vectors
-  INTVCS(0xFFF1, (int8_t*)g_abort_vector1);
-  INTVCS(0xFFF2, (int8_t*)g_abort_vector2);  
+  _dos_intvcs(0xFFF1, g_abort_vector1);
+  _dos_intvcs(0xFFF2, g_abort_vector2);  
 
   // flush key buffer
-  KFLUSHIO(0xff);
+  _dos_kflushio(0xff);
 
   // print error message
   if (error_mes[0] != '\0') {
-    printf("error: %s\n", error_mes);
+    _iocs_b_print("error: ");
+    _iocs_b_print(error_mes);
+    _iocs_b_print(cp932rsc_crlf);
   }
 
   return rc;

@@ -1,15 +1,12 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
-#include <doslib.h>
+#include <x68k/dos.h>
+#include <x68k/iocs.h>
 #include <himem.h>
 #include <utf8_cp932.h>
 #include <jpeg.h>
 #include "flac_decode.h"
-
-#ifdef __VERBOSE__
-#include <iocslib.h>
-#endif
 
 //
 //  init flac decoder handle
@@ -105,7 +102,7 @@ int32_t flac_decode_get_skip_offset(FLAC_DECODE_HANDLE* decode, int32_t fd) {
 
   // read the first 10 bytes of the FLAC file
   uint8_t flac_header[10];
-  size_t ret = READ(fd, flac_header, 10);
+  size_t ret = _dos_read(fd, flac_header, 10);
   if (ret != 10) {
     return -1;
   }
@@ -128,11 +125,11 @@ int32_t flac_decode_get_skip_offset(FLAC_DECODE_HANDLE* decode, int32_t fd) {
   // skip extended ID3v2 header
   if (flac_header[5] & (1<<6)) {
     uint8_t ext_header[6];
-    READ(fd, ext_header, 6);
+    _dos_read(fd, ext_header, 6);
     uint32_t ext_header_size = id3v2_version == 0x03 ? *((uint32_t*)(ext_header + 0)) :
                                 ((ext_header[0] & 0x7f) << 21) | ((ext_header[1] & 0x7f) << 14) |
                                 ((ext_header[2] & 0x7f) << 7)  | (ext_header[3] & 0x7f);
-    SEEK(fd, ext_header_size, 1);
+    _dos_seek(fd, ext_header_size, 1);
     total_tag_size -= 6 + ext_header_size;
   }
 
@@ -352,7 +349,7 @@ int32_t flac_decode_full(FLAC_DECODE_HANDLE* decode, int16_t* decode_buffer, siz
   int32_t decode_ofs = 0;
 
 #ifdef __VERBOSE__
-  uint32_t t0 = ONTIME();
+  uint32_t t0 = (_iocs_ontime()).sec;
 #endif
 
   for (;;) {
@@ -388,8 +385,8 @@ exit:
   *decoded_bytes = decode_ofs * sizeof(int16_t);
 
 #ifdef __VERBOSE__
-  uint32_t t1 = ONTIME();
-  printf("%4.2f samples/sec\n",decode_ofs * 100.0 / 2.0 / (t1 - t0));
+  uint32_t t1 = (_iocs_ontime()).sec;
+  printf("%d samples/sec\n",(int32_t)(decode_ofs * 100.0 / 2.0 / (t1 - t0)));
 #endif
 
   return rc;
