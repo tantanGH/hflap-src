@@ -7,7 +7,7 @@ endif
 .SUFFIXES:
 
 # バージョン
-VERSION = 075
+VERSION = 076
 
 # 実行ファイル名
 TARGET_FILE_000 = HFLAP.X
@@ -24,38 +24,37 @@ PACKAGE_FILE = ../HFLAP$(VERSION).ZIP
 CC = m68k-xelf-gcc
 AS = m68k-xelf-as
 
-# HAS to GAS コンバータ
-HAS2GAS = python3 has2gas.py
-
 # ヘッダ検索パス
 INCLUDE_FLAGS = -I${ELF2X68K_DIR}/lib/gcc/m68k-elf/13.4.0/include \
 				-I${ELF2X68K_DIR}/m68k-elf/include \
 				-I../libs/libhimem/include \
+				-I../libs/libcmdline/include \
 				-I../libs/libj/include \
 				-I../libs/libutf8/include \
-				-I../libs/libjpeg/include \
 				-I../libs/libpcm8a/include \
 				-I../libs/libpcm8pp/include \
+				-I../libs/libjpeg/include \
 				-I../libs/libfoxenflac-x68k/include
 
 # ライブラリ検索パス
-LDFLAGS = -L../libs/libhimem/lib -L../libs/libj/lib -L../libs/libutf8/lib \
-		  -L../libs/libjpeg/lib -L../libs/libpcm8a/lib -L../libs/libpcm8pp/lib \
-		  -L../libs/libfoxenflac-x68k/lib
+LDFLAGS = -L../libs/libhimem/lib -L../libs/libcmdline/lib \
+		  -L../libs/libj/lib -L../libs/libutf8/lib \
+		  -L../libs/libpcm8a/lib -L../libs/libpcm8pp/lib \
+		  -L../libs/libjpeg/lib -L../libs/libfoxenflac-x68k/lib
 
 # *.c ソースファイル
-C_SRCS = flac_decode.c main.c
+C_SRCS = cp932rsc.c flac_decode.c main.c
 
 # *.s ソースファイル
-ASM_SRCS = cp932rsc.s
+ASM_SRCS = 
 
 # *.h source files
-HEADER_SRCS = cp932rsc.h keyboard.h flac_decode.h hflap.h
+HEADER_SRCS = keyboard.h cp932rsc.h flac_decode.h hflap.h
 
 # リンク対象のライブラリファイル
-LIBS_000 = -ldos -liocs -lhimem -lj -lutf8 -ljpeg -lpcm8a -lpcm8pp -lfoxenflac
-LIBS_030 = -ldos -liocs -lhimem -lj -lutf8 -ljpeg -lpcm8a -lpcm8pp -lfoxenflac030
-LIBS_060 = -ldos -liocs -lhimem -lj -lutf8 -ljpeg -lpcm8a -lpcm8pp -lfoxenflac060
+LIBS_000 = -ldos -liocs -lhimem -lcmdline -lj -lutf8 -ljpeg -lpcm8a -lpcm8pp -lfoxenflac
+LIBS_030 = -ldos -liocs -lhimem -lcmdline -lj -lutf8 -ljpeg -lpcm8a -lpcm8pp -lfoxenflac030
+LIBS_060 = -ldos -liocs -lhimem -lcmdline -lj -lutf8 -ljpeg -lpcm8a -lpcm8pp -lfoxenflac060
 
 # 中間ファイル生成用ディレクトリ
 INTERMEDIATE_DIR_000 = _build000/elf2x68k
@@ -113,20 +112,10 @@ $(INTERMEDIATE_DIR_060)/%.o : %.c Makefile $(HEADER_SRCS)
 	mkdir -p $(INTERMEDIATE_DIR_060)
 	$(CC) $(CFLAGS_060) -c $*.c -o $(INTERMEDIATE_DIR_060)/$*.o
 
-# *.s ソースのアセンブル
-$(INTERMEDIATE_DIR_000)/%.o : %.s Makefile $(HEADER_SRCS)
-	mkdir -p $(INTERMEDIATE_DIR_000)
-	$(HAS2GAS) < $*.s > $(INTERMEDIATE_DIR_000)/$*.gas
-	$(AS) -c $(INTERMEDIATE_DIR_000)/$*.gas -o $(INTERMEDIATE_DIR_000)/$*.o
-$(INTERMEDIATE_DIR_030)/%.o : %.s Makefile $(HEADER_SRCS)
-	mkdir -p $(INTERMEDIATE_DIR_030)
-	$(HAS2GAS) < $*.s > $(INTERMEDIATE_DIR_030)/$*.gas
-	$(AS) -c $(INTERMEDIATE_DIR_030)/$*.gas -o $(INTERMEDIATE_DIR_030)/$*.o
-$(INTERMEDIATE_DIR_060)/%.o : %.s Makefile $(HEADER_SRCS)
-	mkdir -p $(INTERMEDIATE_DIR_060)
-	$(HAS2GAS) < $*.s > $(INTERMEDIATE_DIR_060)/$*.gas
-	$(AS) -c $(INTERMEDIATE_DIR_060)/$*.gas -o $(INTERMEDIATE_DIR_060)/$*.o
-
 # 配布用パッケージ作成
 package:
-	zip -j ${PACKAGE_FILE} ${DOCUMENT_FILE} ${INTERMEDIATE_DIR_000}/${TARGET_FILE_000} ${INTERMEDIATE_DIR_030}/${TARGET_FILE_030} ${INTERMEDIATE_DIR_060}/${TARGET_FILE_060} 
+	zip -j ${PACKAGE_FILE} \
+			${DOCUMENT_FILE} \
+			${INTERMEDIATE_DIR_000}/${TARGET_FILE_000} \
+			${INTERMEDIATE_DIR_030}/${TARGET_FILE_030} \
+			${INTERMEDIATE_DIR_060}/${TARGET_FILE_060} 

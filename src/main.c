@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <jstring.h>
+#include <cmdline.h>
 #include <doslib.h>
 #include <iocslib.h>
 
@@ -175,7 +176,7 @@ static void show_help_message() {
 //
 //  main
 //
-int32_t main(int32_t argc, uint8_t* argv[]) {
+int32_t main(int32_t argc_, uint8_t* argv_[]) {
 
   // default return code
   int32_t rc = 1;
@@ -188,7 +189,7 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
   g_funckey_mode = C_FNKMOD(-1);
 
   // command line options
-  //uint8_t* flac_file_name = NULL;
+  uint8_t* flac_file_name = NULL;
   int16_t playback_volume = DEFAULT_VOLUME;
   int16_t loop_count = 1;
   int16_t num_buffers = DEFAULT_BUFFERS;
@@ -203,12 +204,8 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
   int32_t num_chains = 0;
 
   // exit error message
-  uint8_t error_mes[ 256 ];
+  static uint8_t error_mes[ 256 ];
   error_mes[0] = '\0';
-
-  // non-quoted filename
-  uint8_t flac_file_name[ MAX_PATH_LEN ];
-  flac_file_name[0] = '\0';
 
 #ifdef __mc68060__
   if (get_mpu_type() < 6) {
@@ -221,6 +218,10 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
     goto exit;
   }
 #endif
+
+  // parse command line with quote consideration
+  int32_t argc = cmdline_get_argc();
+  char** argv = cmdline_get_argv();
 
   // parse command line options
   for (int16_t i = 1; i < argc; i++) {
@@ -259,23 +260,11 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
         goto exit;
       }
     } else {
-      if (flac_file_name[0] != '\0') {
+      if (flac_file_name != NULL) {
         strcpy(error_mes, cp932rsc_too_many_files);
         goto exit;
       }
-      if (argv[i][0] == '"' || argv[i][0] == '\'') {
-        // detected filename quotation
-        struct PDBADR* pdb = GETPDB();
-        uint8_t* q0 = jstrchr((uint8_t*)(pdb->comline),argv[i][0]);
-        uint8_t* q1 = jstrrchr((uint8_t*)(pdb->comline),argv[i][0]);
-        if (q0 < q1) {
-          memcpy(flac_file_name, q0 + 1, q1 - q0 - 1);
-          flac_file_name[q1 - q0 - 1] = '\0';
-        }
-        break;  // no more parsing
-      } else {
-        strcpy(flac_file_name, argv[i]);
-      }
+      flac_file_name = argv[i];
 //      if (strlen(flac_file_name) < 5 || stricmp(flac_file_name + strlen(flac_file_name) - 4, ".fla") != 0) {
 //        strcpy(error_mes, cp932rsc_not_flac_file);
 //        goto exit;
@@ -284,7 +273,7 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
   }
 
   // flac file is specified?
-  if (flac_file_name[0] == '\0' || strlen(flac_file_name) < 5) {
+  if (flac_file_name == NULL || strlen(flac_file_name) < 5) {
     show_help_message();
     goto exit;
   }
@@ -394,14 +383,6 @@ try:
     strcpy(error_mes, cp932rsc_himem_shortage);
     goto catch;
   }
-
-  // close standard file handle
-  //fclose(fp);
-  //fp = NULL;
-
-  // reopen the file using DOS call
-  //fd = OPEN(flac_file_name, 0);
-  //SEEK(fd, skip_offset, 0);
 
   // read whole flac file content into high memory
   if (!continuous_read) {
