@@ -30,6 +30,7 @@ const uint8_t cp932rsc_erase_line_and_up[] = "\r\x1b[0K\x1bM";
 const uint8_t cp932rsc_crlf[] = "\r\n";
 
 const uint8_t cp932rsc_progress_normal[] = ">";
+const uint8_t cp932rsc_progress_wait[] = "_";
 const uint8_t cp932rsc_progress_under[] = "*";
 const uint8_t cp932rsc_progress_last[] = "|";
 

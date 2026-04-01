@@ -36,8 +36,9 @@ INCLUDE_FLAGS = -I${ELF2X68K_DIR}/lib/gcc/m68k-elf/13.4.0/include \
 				-I../libs/libjpeg/include \
 				-I../libs/libfoxenflac-x68k/include
 
-# ライブラリ検索パス
-LDFLAGS = -L../libs/libhimem/lib -L../libs/libcmdline/lib \
+# リンカオプションとライブラリ検索パス
+LDFLAGS = -Wl,-s -Wl,--gc-sections \
+		  -L../libs/libhimem/lib -L../libs/libcmdline/lib \
 		  -L../libs/libj/lib -L../libs/libutf8/lib \
 		  -L../libs/libpcm8a/lib -L../libs/libpcm8pp/lib \
 		  -L../libs/libjpeg/lib -L../libs/libfoxenflac-x68k/lib

@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <jstring.h>
 #include <cmdline.h>
 #include <x68k/dos.h>
@@ -507,7 +508,7 @@ try:
     if (end_flag) break;
 
     static uint8_t mes[256];
-    sprintf(mes, "\rNow buffering (%d/%d) ... [SHIFT] key to cancel.", i+1, num_buffers);
+    sprintf(mes, cp932rsc_now_buffering, i+1, num_buffers);
     _iocs_b_print(mes);
 
     if (playback_driver == DRIVER_PCM8A) {
@@ -766,12 +767,13 @@ try:
   }
 
   _iocs_b_print(cp932rsc_erase_line_and_up);
-  _iocs_b_print(cp932rsc_now_loading);
+  _iocs_b_print(cp932rsc_now_playing);
 
   int16_t paused = 0;
 
   // dummy wait to make sure DMAC start (200 msec)
-  for (int32_t t0 = (_iocs_ontime()).sec; (_iocs_ontime()).sec < t0 + 20;) {}
+  //for (int32_t t0 = (_iocs_ontime()).sec; (_iocs_ontime()).sec < t0 + 20;) {}
+  usleep(200000);
 
   int32_t block_counter_ofs = 0;
   int32_t buffer_delta = num_buffers;
@@ -864,6 +866,26 @@ try:
           }
         }
 
+        // check block counter
+        void* cur_pcm8a_addr = pcm8a_get_access_address(0);
+        int32_t block_counter = 0;
+        CHAIN_TABLE* rct = g_init_chain_table;
+        CHAIN_TABLE* resume_chain_table = NULL;
+        while (rct != NULL) {
+          if (rct->buffer != NULL && rct->buffer <= cur_pcm8a_addr && cur_pcm8a_addr < (rct->buffer + rct->buffer_len * 2)) {
+            resume_chain_table = rct;
+            break;
+          }
+          block_counter++;
+          rct = rct->next;
+        }
+        int32_t dt = num_chains - block_counter;
+        if (dt >= num_buffers * 4) {
+          //_iocs_b_print(cp932rsc_progress_wait);
+          usleep(500000);
+          continue;   // too fast decoding
+        }
+
         // allocate the next chain table entry
         CHAIN_TABLE* ct = (CHAIN_TABLE*)himem_malloc(sizeof(CHAIN_TABLE));
         if (ct == NULL) {
@@ -909,20 +931,7 @@ try:
         num_chains++;
 
         // in case any buffered chain is consumed, display '*'. Otherwise display '.'.
-        void* cur_pcm8a_addr = pcm8a_get_access_address(0);
-        int32_t block_counter = 0;
-        CHAIN_TABLE* rct = g_init_chain_table;
-        CHAIN_TABLE* resume_chain_table = NULL;
-        while (rct != NULL) {
-          if (rct->buffer != NULL && rct->buffer <= cur_pcm8a_addr && cur_pcm8a_addr < (rct->buffer + rct->buffer_len * 2)) {
-            resume_chain_table = rct;
-            break;
-          }
-          block_counter++;
-          rct = rct->next;
-        }
-
-        int32_t dt = num_chains - block_counter;
+        dt = num_chains - block_counter;  // update
         if (dt >= buffer_delta) {
           if (!quiet_mode) _iocs_b_print(cp932rsc_progress_normal);
           if (reclaim_block_counter < block_counter && reclaim_chain_table->buffer != NULL) {    // reclaim buffer memory
@@ -987,6 +996,15 @@ try:
           }
         }
 
+        // check delta
+        int32_t block_counter = pcm8pp_get_block_counter(0);
+        int32_t dt = num_chains - (block_counter_ofs + block_counter);
+        if (dt > num_buffers * 4) {
+          _iocs_b_print(cp932rsc_progress_wait);
+          usleep(500000);
+          continue;  // too fast decoding
+        }
+
         // allocate the next chain table entry
         CHAIN_TABLE_EX* ct = (CHAIN_TABLE_EX*)himem_malloc(sizeof(CHAIN_TABLE_EX));
         if (ct == NULL) {
@@ -1040,8 +1058,8 @@ try:
         num_chains++;
 
         // in case any buffered chain is consumed, display '*'. Otherwise display '.'.
-        int32_t block_counter = pcm8pp_get_block_counter(0);
-        int32_t dt = num_chains - (block_counter_ofs + block_counter);
+        block_counter = pcm8pp_get_block_counter(0);              // update
+        dt = num_chains - (block_counter_ofs + block_counter);    // update
         if (dt >= buffer_delta) {
           if (!quiet_mode) _iocs_b_print(cp932rsc_progress_normal);
           if (reclaim_block_counter < block_counter && reclaim_chain_table_ex->buffer != NULL) {    // reclaim buffer memory
@@ -1051,6 +1069,7 @@ try:
             reclaim_block_counter = block_counter;
           }
         } else {
+          //printf("dt=%d,buffer_delta=%d,num_chains=%d,block_counter_ofs=%d,block_counter=%d\n",dt,buffer_delta,num_chains,block_counter_ofs,block_counter);
           if (!quiet_mode) _iocs_b_print(cp932rsc_progress_under);
           buffer_delta = dt;
         }
@@ -1093,7 +1112,8 @@ catch:
   }
 
   // dummy wait to make sure DMAC stop (200 msec)
-  for (int32_t t0 = (_iocs_ontime()).sec; (_iocs_ontime()).sec < t0 + 20;) {}
+  //for (int32_t t0 = (_iocs_ontime()).sec; (_iocs_ontime()).sec < t0 + 20;) {}
+  usleep(200000);
 
   // close input file if still opened
   if (fd != -1) {

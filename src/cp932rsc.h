@@ -32,6 +32,7 @@ extern const uint8_t cp932rsc_erase_line_and_up[];
 extern const uint8_t cp932rsc_crlf[];
 
 extern const uint8_t cp932rsc_progress_normal[];
+extern const uint8_t cp932rsc_progress_wait[];
 extern const uint8_t cp932rsc_progress_under[];
 extern const uint8_t cp932rsc_progress_last[];
 
