@@ -1000,7 +1000,7 @@ try:
         int32_t block_counter = pcm8pp_get_block_counter(0);
         int32_t dt = num_chains - (block_counter_ofs + block_counter);
         if (dt > num_buffers * 4) {
-          _iocs_b_print(cp932rsc_progress_wait);
+          //_iocs_b_print(cp932rsc_progress_wait);
           usleep(500000);
           continue;  // too fast decoding
         }
