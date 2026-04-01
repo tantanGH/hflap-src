@@ -52,9 +52,9 @@ ASM_SRCS =
 HEADER_SRCS = keyboard.h cp932rsc.h flac_decode.h hflap.h
 
 # リンク対象のライブラリファイル
-LIBS_000 = -ldos -liocs -lhimem -lcmdline -lj -lutf8 -ljpeg -lpcm8a -lpcm8pp -lfoxenflac
-LIBS_030 = -ldos -liocs -lhimem -lcmdline -lj -lutf8 -ljpeg -lpcm8a -lpcm8pp -lfoxenflac030
-LIBS_060 = -ldos -liocs -lhimem -lcmdline -lj -lutf8 -ljpeg -lpcm8a -lpcm8pp -lfoxenflac060
+LIBS_000 = -lhimem -lcmdline -lj -lutf8 -ljpeg -lpcm8a -lpcm8pp -lfoxenflac
+LIBS_030 = -lhimem -lcmdline -lj -lutf8 -ljpeg -lpcm8a -lpcm8pp -lfoxenflac030
+LIBS_060 = -lhimem -lcmdline -lj -lutf8 -ljpeg -lpcm8a -lpcm8pp -lfoxenflac060
 
 # 中間ファイル生成用ディレクトリ
 INTERMEDIATE_DIR_000 = _build000/elf2x68k

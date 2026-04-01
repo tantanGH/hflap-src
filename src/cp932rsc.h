@@ -26,4 +26,38 @@ extern const uint8_t cp932rsc_mpu_type_68030[];
 extern const uint8_t cp932rsc_not_flac_file[];
 extern const uint8_t cp932rsc_half_rate_mercury35[];
 
+extern const uint8_t cp932rsc_erase_line[];
+extern const uint8_t cp932rsc_erase_line_and_up[];
+
+extern const uint8_t cp932rsc_crlf[];
+
+extern const uint8_t cp932rsc_progress_normal[];
+extern const uint8_t cp932rsc_progress_under[];
+extern const uint8_t cp932rsc_progress_last[];
+
+extern const uint8_t cp932rsc_aborted[];
+extern const uint8_t cp932rsc_stopped[];
+extern const uint8_t cp932rsc_finished[];
+extern const uint8_t cp932rsc_canceled[];
+
+extern const uint8_t cp932rsc_now_loading[];
+extern const uint8_t cp932rsc_now_loading_picture[];
+extern const uint8_t cp932rsc_now_buffering[];
+extern const uint8_t cp932rsc_now_playing[];
+
+extern const uint8_t cp932rsc_flac_file_name[];
+extern const uint8_t cp932rsc_flac_data_size[];
+extern const uint8_t cp932rsc_flac_data_format[];
+
+extern const uint8_t cp932rsc_pcm_driver[];
+
+extern const uint8_t cp932rsc_flac_title[];
+extern const uint8_t cp932rsc_flac_artist[];
+extern const uint8_t cp932rsc_flac_album[];
+extern const uint8_t cp932rsc_flac_vendor[];
+
+extern const uint8_t cp932rsc_flac_frequency[];
+extern const uint8_t cp932rsc_flac_channels[]; 
+extern const uint8_t cp932rsc_flac_bit_depth[]; 
+
 #endif
