@@ -19,3 +19,6 @@
 [submodule "libs/libfoxenflac-x68k"]
 	path = libs/libfoxenflac-x68k
 	url = https://github.com/tantanGH/libfoxenflac-x68k.git
+[submodule "libs/libcmdline"]
+	path = libs/libcmdline
+	url = https://github.com/tantanGH/libcmdline.git
