@@ -7,7 +7,7 @@ endif
 .SUFFIXES:
 
 # バージョン
-VERSION = 080
+VERSION = 081
 
 # 実行ファイル名
 TARGET_FILE_000 = HFLAP.X
@@ -37,7 +37,7 @@ INCLUDE_FLAGS = -I${ELF2X68K_DIR}/lib/gcc/m68k-elf/13.4.0/include \
 				-I../libs/libfoxenflac-x68k/include
 
 # リンカオプションとライブラリ検索パス
-LDFLAGS = -Wl,-s -Wl,--gc-sections \
+LDFLAGS = -m68000 -Wl,-s -Wl,--gc-sections \
 		  -L../libs/libhimem/lib -L../libs/libcmdline/lib \
 		  -L../libs/libj/lib -L../libs/libutf8/lib \
 		  -L../libs/libpcm8a/lib -L../libs/libpcm8pp/lib \
@@ -72,11 +72,11 @@ OBJS_060 =	$(addprefix $(INTERMEDIATE_DIR_060)/,$(patsubst %.c,%.o,$(C_SRCS))) \
 
 # コンパイルフラグ
 COMMON_FLAGS_000 = -m68000 -O3 -msoft-float -specs=nano.specs $(INCLUDE_FLAGS) -fno-defer-pop
-CFLAGS_000 = $(COMMON_FLAGS_000) -DHFLAP
+CFLAGS_000 = $(COMMON_FLAGS_000)
 COMMON_FLAGS_030 = -m68030 -O3 -msoft-float -specs=nano.specs $(INCLUDE_FLAGS) -fno-defer-pop
-CFLAGS_030 = $(COMMON_FLAGS_030) -DHFLAP
+CFLAGS_030 = $(COMMON_FLAGS_030)
 COMMON_FLAGS_060 = -m68060 -O3 -msoft-float -specs=nano.specs $(INCLUDE_FLAGS) -fno-defer-pop
-CFLAGS_060 = $(COMMON_FLAGS_060) -DHFLAP
+CFLAGS_060 = $(COMMON_FLAGS_060)
 
 # デフォルトのターゲット
 all : 000 030 060
