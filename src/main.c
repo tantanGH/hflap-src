@@ -33,8 +33,8 @@
 //
 //  abort vectors
 //
-static void* g_abort_vector1;
-static void* g_abort_vector2;
+static void* g_abort_vector1 = NULL;
+static void* g_abort_vector2 = NULL;
 
 //
 //  chain table top
@@ -62,8 +62,8 @@ static void* fread_staging_buffer = NULL;
 static __attribute__((interrupt)) void abort_application() {
 
   // resume abort vectors
-  _dos_intvcs(0xFFF1, g_abort_vector1);
-  _dos_intvcs(0xFFF2, g_abort_vector2);  
+  if (g_abort_vector1 != NULL) _dos_intvcs(0xFFF1, g_abort_vector1);
+  if (g_abort_vector2 != NULL) _dos_intvcs(0xFFF2, g_abort_vector2);  
 
   // stop pcm8a
   if (pcm8a_isavailable()) {
@@ -335,6 +335,7 @@ loop:
   // current chain table entries
   CHAIN_TABLE* cur_chain_table = NULL;
   CHAIN_TABLE_EX* cur_chain_table_ex = NULL;
+  num_chains = 0;
 
   // reclaim chain table entries
   CHAIN_TABLE* reclaim_chain_table = NULL;
@@ -503,25 +504,22 @@ try:
 
   // initial buffering
   int16_t end_flag = 0;
-  for (int16_t i = 0; i < num_buffers; i++) {
+  for (int16_t i = 0; i <= num_buffers; i++) {
 
     if (end_flag) break;
 
     static uint8_t mes[256];
-    sprintf(mes, cp932rsc_now_buffering, i+1, num_buffers);
-    _iocs_b_print(mes);
+    if (i < num_buffers) {
+      sprintf(mes, cp932rsc_now_buffering, i+1, num_buffers);
+      _iocs_b_print(mes);
+    }
 
     if (playback_driver == DRIVER_PCM8A) {
 
       // continuous read
       if (flac_decoder.continuous_read_len > 0) {
         size_t remain_len = flac_decoder.continuous_read_len - flac_decoder.continuous_read_pos;
-
-#ifdef __VERBOSE__
-      printf("flac_data_pos=%d, continuous_read_pos=%d, remain_len=%d\n",flac_decoder.flac_data_pos,flac_decoder.continuous_read_pos, remain_len);
-#endif
-
-        if (remain_len <= CONTINUOUS_FLAC_DRAIN_BYTES) {
+        if (remain_len <= CONTINUOUS_FLAC_DRAIN_BYTES || i == num_buffers) {
           memcpy(fread_buffer, fread_buffer + flac_decoder.continuous_read_pos, remain_len);
           flac_decoder.continuous_read_len = CONTINUOUS_FLAC_CONTINUE_BYTES * ((flac_decoder.bps > 16 || flac_decoder.sample_rate > 48000) ? 2 : 1);
           flac_decoder.continuous_read_pos = 0;
@@ -551,15 +549,18 @@ try:
         }
       }
 
+      // fill disk buffer just before start playing
+      if (i == num_buffers) break;
+
       // allocate a new chain table entry in high memory
-      CHAIN_TABLE* ct = (CHAIN_TABLE*)himem_malloc(sizeof(CHAIN_TABLE));
+      CHAIN_TABLE* ct = (CHAIN_TABLE*)himem_calloc(sizeof(CHAIN_TABLE),1);
       if (ct == NULL) {
         strcpy(error_mes, cp932rsc_himem_shortage);
         goto catch;
       }
 
       // zero clear
-      memset(ct, 0, sizeof(CHAIN_TABLE));
+      //memset(ct, 0, sizeof(CHAIN_TABLE));
 
       // allocate pcm data buffer for this chain table entry
       ct->buffer = himem_malloc(CHAIN_TABLE_BUFFER_BYTES);
@@ -613,12 +614,7 @@ try:
       // continuous read
       if (flac_decoder.continuous_read_len > 0) {
         size_t remain_len = flac_decoder.continuous_read_len - flac_decoder.continuous_read_pos;
-
-#ifdef __VERBOSE__
-      printf("flac_data_pos=%d, continuous_read_pos=%d, remain_len=%d\n",flac_decoder.flac_data_pos,flac_decoder.continuous_read_pos, remain_len);
-#endif
-
-        if (remain_len <= CONTINUOUS_FLAC_DRAIN_BYTES) {
+        if (remain_len <= CONTINUOUS_FLAC_DRAIN_BYTES || i == num_buffers) {
           memcpy(fread_buffer, fread_buffer + flac_decoder.continuous_read_pos, remain_len);
           flac_decoder.continuous_read_len = CONTINUOUS_FLAC_CONTINUE_BYTES * ((flac_decoder.bps > 16 || flac_decoder.sample_rate > 48000) ? 2 : 1);
           flac_decoder.continuous_read_pos = 0;
@@ -648,15 +644,18 @@ try:
         }
       }
 
+      // fill disk buffer just before start playing
+      if (i == num_buffers) break;
+
       // allocate a new chain table entry in high memory
-      CHAIN_TABLE_EX* ct = (CHAIN_TABLE_EX*)himem_malloc(sizeof(CHAIN_TABLE_EX));
+      CHAIN_TABLE_EX* ct = (CHAIN_TABLE_EX*)himem_calloc(sizeof(CHAIN_TABLE_EX),1);
       if (ct == NULL) {
         strcpy(error_mes, cp932rsc_himem_shortage);
         goto catch;
       }
 
       // zero clear
-      memset(ct, 0, sizeof(CHAIN_TABLE_EX));
+      //memset(ct, 0, sizeof(CHAIN_TABLE_EX));
 
       // allocate pcm data buffer for this chain table entry
       size_t buffer_bytes = flac_decoder.sample_rate > 48000 ? CHAIN_TABLE_EX_BUFFER_BYTES * 2 : CHAIN_TABLE_EX_BUFFER_BYTES;
@@ -771,326 +770,363 @@ try:
 
   int16_t paused = 0;
 
-  // dummy wait to make sure DMAC start (200 msec)
+  // dummy wait to make sure DMAC start
   //for (int32_t t0 = (_iocs_ontime()).sec; (_iocs_ontime()).sec < t0 + 20;) {}
   usleep(200000);
+//  if (playback_driver == DRIVER_PCM8A) {
+//    while (pcm8a_get_data_length(0) == 0) {
+//      usleep(50000);
+//    }
+//  } else if (playback_driver == DRIVER_PCM8PP) {
+//    while (pcm8pp_get_data_length(0) == 0) {
+//      usleep(50000);
+//    }    
+//  }
 
   int32_t block_counter_ofs = 0;
   int32_t buffer_delta = num_buffers;
 
-  for (;;) {
+
+  if (playback_driver == DRIVER_PCM8A) {
+
+    for (;;) {
    
-    // check esc key to exit, space key to pause
-    if (_iocs_b_keysns() != 0) {
-      int16_t scan_code = _iocs_b_keyinp() >> 8;
-      if (scan_code == KEY_SCAN_CODE_ESC || scan_code == KEY_SCAN_CODE_Q) {
-        _iocs_b_print(cp932rsc_stopped);
-        rc = 1;
-        break;
-      } else if (scan_code == KEY_SCAN_CODE_SPACE) {
-        if (paused) {
-          if (playback_driver == DRIVER_PCM8A) {
-            pcm8a_resume();
-          } else if (playback_driver == DRIVER_PCM8PP) {
-            pcm8pp_resume();
-          }
+      // check esc key to exit, space key to pause
+      if (_iocs_b_keysns() != 0) {
+        int16_t scan_code = _iocs_b_keyinp() >> 8;
+        if (scan_code == KEY_SCAN_CODE_ESC || scan_code == KEY_SCAN_CODE_Q) {
+          _iocs_b_print(cp932rsc_stopped);
+          rc = 1;
+          break;
+        } else if (scan_code == KEY_SCAN_CODE_SPACE) {
+          pcm8a_resume();
           paused = 0;
         } else {
-          if (playback_driver == DRIVER_PCM8A) {
-            pcm8a_pause();
-          } else if (playback_driver == DRIVER_PCM8PP) {
-            pcm8pp_pause();
-          }
+          pcm8a_pause();
           paused = 1;
         }
       }
-    }
 
-    // exit if not playing
-    if (!paused) {
-      if ((playback_driver == DRIVER_PCM8A  && pcm8a_get_data_length(0)  == 0) ||
-          (playback_driver == DRIVER_PCM8PP && pcm8pp_get_data_length(0) == 0)) {
-        if (end_flag) { 
-          _iocs_b_print(cp932rsc_finished);
-          rc = 0;
-          break;
-        } else {
-          // in case playback is stopped but not reached to the end, buffer underrun is observed.
-          _iocs_b_print(cp932rsc_crlf);
-          _iocs_b_print(cp932rsc_buffer_underrun);
-          _iocs_b_print(cp932rsc_crlf);
+      // exit if not playing
+      if (!paused) {
+        if (pcm8a_get_data_length(0) == 0) {
+          if (end_flag) { 
+            _iocs_b_print(cp932rsc_finished);
+            rc = 0;
+            break;
+          } else {
+            // in case playback is stopped but not reached to the end, buffer underrun is observed.
+            _iocs_b_print(cp932rsc_buffer_underrun);
+          }
         }
       }
-    }
 
-    // decode additional data
-    if (!end_flag) {
+      // already finishing decoding?
+      if (end_flag) {
+        usleep(500000);
+        continue;
+      }
 
-      if (playback_driver == DRIVER_PCM8A) {
+      // decode additional data
 
-        // continuous read
-        if (flac_decoder.continuous_read_len > 0) {
-          size_t remain_len = flac_decoder.continuous_read_len - flac_decoder.continuous_read_pos;
+      // continuous read
+      if (flac_decoder.continuous_read_len > 0) {
+        size_t remain_len = flac_decoder.continuous_read_len - flac_decoder.continuous_read_pos;
 
 #ifdef __VERBOSE__
         printf("flac_data_pos=%d, continuous_read_pos=%d, remain_len=%d\n",flac_decoder.flac_data_pos,flac_decoder.continuous_read_pos, remain_len);
 #endif
 
-          if (remain_len <= CONTINUOUS_FLAC_DRAIN_BYTES) {
-            memcpy(fread_buffer, fread_buffer + flac_decoder.continuous_read_pos, remain_len);
-            flac_decoder.continuous_read_len = CONTINUOUS_FLAC_CONTINUE_BYTES * ((flac_decoder.bps > 16 || flac_decoder.sample_rate > 48000) ? 2 : 1);
-            flac_decoder.continuous_read_pos = 0;
-            size_t read_size = flac_decoder.continuous_read_len - remain_len;
-            if ((flac_decoder.flac_data_len - flac_decoder.flac_data_pos) < read_size) {
-              read_size = flac_decoder.flac_data_len - flac_decoder.flac_data_pos;
-              flac_decoder.continuous_read_len = read_size;
-            }
-            if (staging_file_read) {
-              fread_staging_buffer = malloc(read_size);   // allocate in main memory
-              if (fread_staging_buffer == NULL) {
-                strcpy(error_mes, cp932rsc_mainmem_shortage);
-                goto catch;
-              }    
-              size_t done = 0;
-              do {
-                size_t len = _dos_read(fd, fread_staging_buffer, read_size - done);
-                if (len == 0) break;
-                memcpy(fread_buffer + remain_len + done, fread_staging_buffer, len);
-                done += len;
-              } while (done < read_size);
-              free(fread_staging_buffer);
-              fread_staging_buffer = NULL;
-            } else {
-              size_t len = _dos_read(fd, fread_buffer + remain_len, read_size);
-            }
+        if (remain_len <= CONTINUOUS_FLAC_DRAIN_BYTES) {
+          memcpy(fread_buffer, fread_buffer + flac_decoder.continuous_read_pos, remain_len);
+          flac_decoder.continuous_read_len = CONTINUOUS_FLAC_CONTINUE_BYTES * ((flac_decoder.bps > 16 || flac_decoder.sample_rate > 48000) ? 2 : 1);
+          flac_decoder.continuous_read_pos = 0;
+          size_t read_size = flac_decoder.continuous_read_len - remain_len;
+          if ((flac_decoder.flac_data_len - flac_decoder.flac_data_pos) < read_size) {
+            read_size = flac_decoder.flac_data_len - flac_decoder.flac_data_pos;
+            flac_decoder.continuous_read_len = read_size;
+          }
+          if (staging_file_read) {
+            fread_staging_buffer = malloc(read_size);   // allocate in main memory
+            if (fread_staging_buffer == NULL) {
+              strcpy(error_mes, cp932rsc_mainmem_shortage);
+              goto catch;
+            }    
+            size_t done = 0;
+            do {
+              size_t len = _dos_read(fd, fread_staging_buffer, read_size - done);
+              if (len == 0) break;
+              memcpy(fread_buffer + remain_len + done, fread_staging_buffer, len);
+              done += len;
+            } while (done < read_size);
+            free(fread_staging_buffer);
+            fread_staging_buffer = NULL;
+          } else {
+            size_t len = _dos_read(fd, fread_buffer + remain_len, read_size);
           }
         }
+      }
 
-        // check block counter
-        void* cur_pcm8a_addr = pcm8a_get_access_address(0);
-        int32_t block_counter = 0;
-        CHAIN_TABLE* rct = g_init_chain_table;
-        CHAIN_TABLE* resume_chain_table = NULL;
-        while (rct != NULL) {
-          if (rct->buffer != NULL && rct->buffer <= cur_pcm8a_addr && cur_pcm8a_addr < (rct->buffer + rct->buffer_len * 2)) {
-            resume_chain_table = rct;
+      // check block counter
+      void* cur_pcm8a_addr = pcm8a_get_access_address(0);
+      int32_t block_counter = 0;
+      CHAIN_TABLE* rct = g_init_chain_table;
+      CHAIN_TABLE* resume_chain_table = NULL;
+      while (rct != NULL) {
+        if (rct->buffer != NULL && rct->buffer <= cur_pcm8a_addr && cur_pcm8a_addr < (rct->buffer + rct->buffer_len * 2)) {
+          resume_chain_table = rct;
+          break;
+        }
+        block_counter++;
+        rct = rct->next;
+      }
+      int32_t dt = num_chains - block_counter;
+      if (dt >= num_buffers * 4) {
+        //_iocs_b_print(cp932rsc_progress_wait);
+        usleep(200000);
+        continue;   // too fast decoding
+      }
+
+      // allocate the next chain table entry
+      CHAIN_TABLE* ct = (CHAIN_TABLE*)himem_calloc(sizeof(CHAIN_TABLE),1);
+      if (ct == NULL) {
+        strcpy(error_mes, cp932rsc_himem_shortage);
+        goto catch;
+      }
+
+      // allocate pcm buffer for this chain table entry
+      ct->buffer = himem_malloc(CHAIN_TABLE_BUFFER_BYTES);
+      if (ct->buffer == NULL) {
+        strcpy(error_mes, cp932rsc_himem_shortage);
+        goto catch;
+      }
+
+      // decode flac stream into pcm buffer
+      size_t decoded_bytes;
+      if (flac_decode_resample(&flac_decoder, ct->buffer, CHAIN_TABLE_BUFFER_BYTES, 15625, &decoded_bytes) != 0) {
+        strcpy(error_mes, cp932rsc_flac_decode_error);
+        goto catch;      
+      }
+      //printf("decoded %d\n", decoded_bytes);
+
+      // end of flac?
+      if (decoded_bytes == 0) {
+        himem_free(ct->buffer);
+        himem_free(ct);
+        end_flag = 1;
+        if (!quiet_mode) _iocs_b_print(cp932rsc_progress_last);
+        continue;
+      }
+
+      // decoded byte length
+      ct->buffer_len = decoded_bytes;
+
+      // update current chain table entry pointer
+      cur_chain_table->next = ct;
+      cur_chain_table = ct;
+
+      // number of total chains
+      num_chains++;
+
+      // in case any buffered chain is consumed, display '*'. Otherwise display '.'.
+      dt = num_chains - block_counter;  // update
+      if (dt >= buffer_delta) {
+        if (!quiet_mode) _iocs_b_print(cp932rsc_progress_normal);
+        if (reclaim_block_counter < block_counter && reclaim_chain_table->buffer != NULL) {    // reclaim buffer memory
+          himem_free(reclaim_chain_table->buffer);
+          reclaim_chain_table->buffer = NULL;
+          reclaim_chain_table = reclaim_chain_table->next;
+          reclaim_block_counter = block_counter;
+        }
+      } else {
+        if (!quiet_mode) _iocs_b_print(cp932rsc_progress_under);
+        buffer_delta = dt;
+      }
+
+      // buffer underrun recovery
+      if (pcm8a_get_data_length(0) == 0) {
+        if ((num_chains - block_counter) > 6) {
+          if (resume_chain_table != NULL) {  
+            pcm8a_play_linked_array_chain(0, pcm8a_channel_mode, resume_chain_table);
+            buffer_delta = num_chains - block_counter;
+          }
+        }
+      }
+    }
+  }
+
+  if (playback_driver == DRIVER_PCM8PP) {
+
+    for (;;) {
+
+      // check esc key to exit, space key to pause
+      if (_iocs_b_keysns() != 0) {
+        int16_t scan_code = _iocs_b_keyinp() >> 8;
+        if (scan_code == KEY_SCAN_CODE_ESC || scan_code == KEY_SCAN_CODE_Q) {
+          _iocs_b_print(cp932rsc_stopped);
+          rc = 1;
+          break;
+        } else if (scan_code == KEY_SCAN_CODE_SPACE) {
+          pcm8pp_resume();
+          paused = 0;
+        } else {
+          pcm8pp_pause();
+          paused = 1;
+        }
+      }
+
+      // exit if not playing
+      if (!paused) {
+        if (pcm8pp_get_data_length(0) == 0) {
+          if (end_flag) { 
+            _iocs_b_print(cp932rsc_finished);
+            rc = 0;
             break;
+          } else {
+            // in case playback is stopped but not reached to the end, buffer underrun is observed.
+            _iocs_b_print(cp932rsc_buffer_underrun);
           }
-          block_counter++;
-          rct = rct->next;
         }
-        int32_t dt = num_chains - block_counter;
-        if (dt >= num_buffers * 4) {
-          //_iocs_b_print(cp932rsc_progress_wait);
-          usleep(500000);
-          continue;   // too fast decoding
+      }
+
+      // already finishing decoding?
+      if (end_flag) {
+        usleep(500000);
+        continue;
+      }
+
+      // decode additional data
+
+      // continuous read
+      if (flac_decoder.continuous_read_len > 0) {
+        size_t remain_len = flac_decoder.continuous_read_len - flac_decoder.continuous_read_pos;
+
+#ifdef __VERBOSE__
+      printf("flac_data_pos=%d, continuous_read_pos=%d, remain_len=%d\n",flac_decoder.flac_data_pos,flac_decoder.continuous_read_pos, remain_len);
+#endif
+
+        if (remain_len <= CONTINUOUS_FLAC_DRAIN_BYTES) {
+          memcpy(fread_buffer, fread_buffer + flac_decoder.continuous_read_pos, remain_len);
+          flac_decoder.continuous_read_len = CONTINUOUS_FLAC_CONTINUE_BYTES * ((flac_decoder.bps > 16 || flac_decoder.sample_rate > 48000) ? 2 : 1);
+          flac_decoder.continuous_read_pos = 0;
+          size_t read_size = flac_decoder.continuous_read_len - remain_len;
+          if ((flac_decoder.flac_data_len - flac_decoder.flac_data_pos) < read_size) {
+            read_size = flac_decoder.flac_data_len - flac_decoder.flac_data_pos;
+            flac_decoder.continuous_read_len = read_size;
+          }
+          if (staging_file_read) {
+            fread_staging_buffer = malloc(read_size);   // allocate in main memory
+            if (fread_staging_buffer == NULL) {
+              strcpy(error_mes, cp932rsc_mainmem_shortage);
+              goto catch;
+            }    
+            size_t done = 0;
+            do {
+              size_t len = _dos_read(fd, fread_staging_buffer, read_size - done);
+              if (len == 0) break;
+              memcpy(fread_buffer + remain_len + done, fread_staging_buffer, len);
+              done += len;
+            } while (done < read_size);
+            free(fread_staging_buffer);
+            fread_staging_buffer = NULL;
+          } else {
+            size_t len = _dos_read(fd, fread_buffer + remain_len, read_size);
+          }
         }
+      }
 
-        // allocate the next chain table entry
-        CHAIN_TABLE* ct = (CHAIN_TABLE*)himem_malloc(sizeof(CHAIN_TABLE));
-        if (ct == NULL) {
-          strcpy(error_mes, cp932rsc_himem_shortage);
-          goto catch;
-        }
+      // check delta
+      int32_t block_counter = pcm8pp_get_block_counter(0);
+      int32_t dt = num_chains - (block_counter_ofs + block_counter);
+      if (dt > num_buffers * 4) {
+        //_iocs_b_print(cp932rsc_progress_wait);
+        //printf("dt=%d,num_chains=%d,block_counter_ofs=%d,block_counter=%d,num_buffers=%d\n",dt,num_chains,block_counter_ofs,block_counter,num_buffers);
+        usleep(200000);
+        continue;  // too fast decoding
+      }
 
-        // zero clear
-        memset(ct, 0, sizeof(CHAIN_TABLE));
+      // allocate the next chain table entry
+      CHAIN_TABLE_EX* ct = (CHAIN_TABLE_EX*)himem_calloc(sizeof(CHAIN_TABLE_EX),1);
+      if (ct == NULL) {
+        strcpy(error_mes, cp932rsc_himem_shortage);
+        goto catch;
+      }
 
-        // allocate pcm buffer for this chain table entry
-        ct->buffer = himem_malloc(CHAIN_TABLE_BUFFER_BYTES);
-        if (ct->buffer == NULL) {
-          strcpy(error_mes, cp932rsc_himem_shortage);
-          goto catch;
-        }
+      // allocate pcm buffer for this chain table entry
+      size_t buffer_bytes = flac_decoder.sample_rate > 48000 ? CHAIN_TABLE_EX_BUFFER_BYTES * 2 : CHAIN_TABLE_EX_BUFFER_BYTES;
+      ct->buffer = himem_malloc(buffer_bytes);
+      if (ct->buffer == NULL) {
+        strcpy(error_mes, cp932rsc_himem_shortage);
+        goto catch;
+      }
 
-        // decode flac stream into pcm buffer
-        size_t decoded_bytes;
-        if (flac_decode_resample(&flac_decoder, ct->buffer, CHAIN_TABLE_BUFFER_BYTES, 15625, &decoded_bytes) != 0) {
+      // decode flac stream into pcm buffer
+      size_t decoded_bytes;
+      if (flac_decoder.sample_rate <= 48000) {
+        if (flac_decode_full(&flac_decoder, ct->buffer, buffer_bytes, &decoded_bytes) != 0) {
           strcpy(error_mes, cp932rsc_flac_decode_error);
           goto catch;      
         }
-        //printf("decoded %d\n", decoded_bytes);
-
-        // end of flac?
-        if (decoded_bytes == 0) {
-          himem_free(ct->buffer);
-          himem_free(ct);
-          end_flag = 1;
-          if (!quiet_mode) _iocs_b_print(cp932rsc_progress_last);
-          continue;
-        }
-
-        // decoded byte length
-        ct->buffer_len = decoded_bytes;
-
-        // update current chain table entry pointer
-        cur_chain_table->next = ct;
-        cur_chain_table = ct;
-
-        // number of total chains
-        num_chains++;
-
-        // in case any buffered chain is consumed, display '*'. Otherwise display '.'.
-        dt = num_chains - block_counter;  // update
-        if (dt >= buffer_delta) {
-          if (!quiet_mode) _iocs_b_print(cp932rsc_progress_normal);
-          if (reclaim_block_counter < block_counter && reclaim_chain_table->buffer != NULL) {    // reclaim buffer memory
-            himem_free(reclaim_chain_table->buffer);
-            reclaim_chain_table->buffer = NULL;
-            reclaim_chain_table = reclaim_chain_table->next;
-            reclaim_block_counter = block_counter;
-          }
-        } else {
-          if (!quiet_mode) _iocs_b_print(cp932rsc_progress_under);
-          buffer_delta = dt;
-        }
-
-        // buffer underrun recovery
-        if (pcm8a_get_data_length(0) == 0) {
-          if ((num_chains - block_counter) > 6) {
-            if (resume_chain_table != NULL) {  
-              pcm8a_play_linked_array_chain(0, pcm8a_channel_mode, resume_chain_table);
-              buffer_delta = num_chains - block_counter;
-            }
-          }
-        }
+      } else {
+        if (flac_decode_full(&flac_decoder, ct->buffer, buffer_bytes, &decoded_bytes) != 0) {
+          strcpy(error_mes, cp932rsc_flac_decode_error);
+          goto catch;      
+        }          
       }
 
-      if (playback_driver == DRIVER_PCM8PP) {
+      // end of flac?
+      if (decoded_bytes == 0) {
+        himem_free(ct->buffer);
+        himem_free(ct);
+        end_flag = 1;
+        if (!quiet_mode) _iocs_b_print(cp932rsc_progress_last);
+        continue;
+      }
 
-        // continuous read
-        if (flac_decoder.continuous_read_len > 0) {
-          size_t remain_len = flac_decoder.continuous_read_len - flac_decoder.continuous_read_pos;
+      // decoded byte length
+      ct->buffer_len = decoded_bytes;
 
+      // update current chain table entry pointer
+      cur_chain_table_ex->next = ct;
+      cur_chain_table_ex = ct;
+
+      // number of total chains
+      num_chains++;
+
+      // in case any buffered chain is consumed, display '*'. Otherwise display '.'.
+      block_counter = pcm8pp_get_block_counter(0);              // update
+      dt = num_chains - (block_counter_ofs + block_counter);    // update
+      if (dt >= buffer_delta) {
+        if (!quiet_mode) _iocs_b_print(cp932rsc_progress_normal);
+        if (reclaim_block_counter < block_counter && reclaim_chain_table_ex->buffer != NULL) {    // reclaim buffer memory
+          himem_free(reclaim_chain_table_ex->buffer);
+          reclaim_chain_table_ex->buffer = NULL;
+          reclaim_chain_table_ex = reclaim_chain_table_ex->next;
+          reclaim_block_counter = block_counter;
+        }
+      } else {
 #ifdef __VERBOSE__
-        printf("flac_data_pos=%d, continuous_read_pos=%d, remain_len=%d\n",flac_decoder.flac_data_pos,flac_decoder.continuous_read_pos, remain_len);
+        printf("dt=%d,buffer_delta=%d,num_chains=%d,block_counter_ofs=%d,block_counter=%d\n",dt,buffer_delta,num_chains,block_counter_ofs,block_counter);
 #endif
+        if (!quiet_mode) _iocs_b_print(cp932rsc_progress_under);
+        buffer_delta = dt;
+      }
 
-          if (remain_len <= CONTINUOUS_FLAC_DRAIN_BYTES) {
-            memcpy(fread_buffer, fread_buffer + flac_decoder.continuous_read_pos, remain_len);
-            flac_decoder.continuous_read_len = CONTINUOUS_FLAC_CONTINUE_BYTES * ((flac_decoder.bps > 16 || flac_decoder.sample_rate > 48000) ? 2 : 1);
-            flac_decoder.continuous_read_pos = 0;
-            size_t read_size = flac_decoder.continuous_read_len - remain_len;
-            if ((flac_decoder.flac_data_len - flac_decoder.flac_data_pos) < read_size) {
-              read_size = flac_decoder.flac_data_len - flac_decoder.flac_data_pos;
-              flac_decoder.continuous_read_len = read_size;
-            }
-            if (staging_file_read) {
-              fread_staging_buffer = malloc(read_size);   // allocate in main memory
-              if (fread_staging_buffer == NULL) {
-                strcpy(error_mes, cp932rsc_mainmem_shortage);
-                goto catch;
-              }    
-              size_t done = 0;
-              do {
-                size_t len = _dos_read(fd, fread_staging_buffer, read_size - done);
-                if (len == 0) break;
-                memcpy(fread_buffer + remain_len + done, fread_staging_buffer, len);
-                done += len;
-              } while (done < read_size);
-              free(fread_staging_buffer);
-              fread_staging_buffer = NULL;
-            } else {
-              size_t len = _dos_read(fd, fread_buffer + remain_len, read_size);
-            }
+      // buffer underrun recovery
+      if (pcm8pp_get_data_length(0) == 0) {
+        int32_t block_counter = pcm8pp_get_block_counter(0) + block_counter_ofs;
+        if ((num_chains - block_counter) > 6) {
+          CHAIN_TABLE_EX* resume_chain_table = g_init_chain_table_ex;
+          for (int32_t i = 0; i < block_counter; i++) {
+            resume_chain_table = resume_chain_table->next;
+            if (resume_chain_table == NULL) break;
+          }
+          if (resume_chain_table != NULL) {  
+            pcm8pp_play_ex_linked_array_chain(0, pcm8pp_channel_mode, 1, pcm_freq * 256, resume_chain_table);
+            block_counter_ofs = block_counter;
+            buffer_delta = num_chains - (block_counter_ofs + pcm8pp_get_block_counter(0));
           }
         }
-
-        // check delta
-        int32_t block_counter = pcm8pp_get_block_counter(0);
-        int32_t dt = num_chains - (block_counter_ofs + block_counter);
-        if (dt > num_buffers * 4) {
-          _iocs_b_print(cp932rsc_progress_wait);
-          usleep(500000);
-          continue;  // too fast decoding
-        }
-
-        // allocate the next chain table entry
-        CHAIN_TABLE_EX* ct = (CHAIN_TABLE_EX*)himem_malloc(sizeof(CHAIN_TABLE_EX));
-        if (ct == NULL) {
-          strcpy(error_mes, cp932rsc_himem_shortage);
-          goto catch;
-        }
-
-        // zero clear
-        memset(ct, 0, sizeof(CHAIN_TABLE_EX));
-
-        // allocate pcm buffer for this chain table entry
-        size_t buffer_bytes = flac_decoder.sample_rate > 48000 ? CHAIN_TABLE_EX_BUFFER_BYTES * 2 : CHAIN_TABLE_EX_BUFFER_BYTES;
-        ct->buffer = himem_malloc(buffer_bytes);
-        if (ct->buffer == NULL) {
-          strcpy(error_mes, cp932rsc_himem_shortage);
-          goto catch;
-        }
-
-        // decode flac stream into pcm buffer
-        size_t decoded_bytes;
-        if (flac_decoder.sample_rate <= 48000) {
-          if (flac_decode_full(&flac_decoder, ct->buffer, buffer_bytes, &decoded_bytes) != 0) {
-            strcpy(error_mes, cp932rsc_flac_decode_error);
-            goto catch;      
-          }
-        } else {
-          if (flac_decode_full(&flac_decoder, ct->buffer, buffer_bytes, &decoded_bytes) != 0) {
-//          if (flac_decode_half(&flac_decoder, ct->buffer, buffer_bytes, &decoded_bytes) != 0) {
-            strcpy(error_mes, cp932rsc_flac_decode_error);
-            goto catch;      
-          }          
-        }
-
-        // end of flac?
-        if (decoded_bytes == 0) {
-          himem_free(ct->buffer);
-          himem_free(ct);
-          end_flag = 1;
-          if (!quiet_mode) _iocs_b_print(cp932rsc_progress_last);
-          continue;
-        }
-
-        // decoded byte length
-        ct->buffer_len = decoded_bytes;
-
-        // update current chain table entry pointer
-        cur_chain_table_ex->next = ct;
-        cur_chain_table_ex = ct;
-
-        // number of total chains
-        num_chains++;
-
-        // in case any buffered chain is consumed, display '*'. Otherwise display '.'.
-        block_counter = pcm8pp_get_block_counter(0);              // update
-        dt = num_chains - (block_counter_ofs + block_counter);    // update
-        if (dt >= buffer_delta) {
-          if (!quiet_mode) _iocs_b_print(cp932rsc_progress_normal);
-          if (reclaim_block_counter < block_counter && reclaim_chain_table_ex->buffer != NULL) {    // reclaim buffer memory
-            himem_free(reclaim_chain_table_ex->buffer);
-            reclaim_chain_table_ex->buffer = NULL;
-            reclaim_chain_table_ex = reclaim_chain_table_ex->next;
-            reclaim_block_counter = block_counter;
-          }
-        } else {
-          //printf("dt=%d,buffer_delta=%d,num_chains=%d,block_counter_ofs=%d,block_counter=%d\n",dt,buffer_delta,num_chains,block_counter_ofs,block_counter);
-          if (!quiet_mode) _iocs_b_print(cp932rsc_progress_under);
-          buffer_delta = dt;
-        }
-
-        // buffer underrun recovery
-        if (pcm8pp_get_data_length(0) == 0) {
-          int32_t block_counter = pcm8pp_get_block_counter(0) + block_counter_ofs;
-          if ((num_chains - block_counter) > 6) {
-            CHAIN_TABLE_EX* resume_chain_table = g_init_chain_table_ex;
-            for (int32_t i = 0; i < block_counter; i++) {
-              resume_chain_table = resume_chain_table->next;
-              if (resume_chain_table == NULL) break;
-            }
-            if (resume_chain_table != NULL) {  
-              pcm8pp_play_ex_linked_array_chain(0, pcm8pp_channel_mode, 1, pcm_freq * 256, resume_chain_table);
-              block_counter_ofs = block_counter;
-              buffer_delta = num_chains - (block_counter_ofs + pcm8pp_get_block_counter(0));
-            }
-          }
-        }
-
       }
 
     }
@@ -1192,8 +1228,8 @@ exit:
   }
 
   // resume abort vectors
-  _dos_intvcs(0xFFF1, g_abort_vector1);
-  _dos_intvcs(0xFFF2, g_abort_vector2);  
+  if (g_abort_vector1 != NULL) _dos_intvcs(0xFFF1, g_abort_vector1);
+  if (g_abort_vector2 != NULL) _dos_intvcs(0xFFF2, g_abort_vector2);  
 
   // flush key buffer
   _dos_kflushio(0xff);

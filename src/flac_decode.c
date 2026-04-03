@@ -18,6 +18,7 @@ int32_t flac_decode_init(FLAC_DECODE_HANDLE* decode) {
   // baseline
   decode->flac_data = NULL;
   decode->flac_data_len = 0;
+  decode->flac_data_pos = 0;
 
   // continuous read
   decode->continuous_read_len = 0;
