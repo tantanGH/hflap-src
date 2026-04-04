@@ -7,7 +7,7 @@ endif
 .SUFFIXES:
 
 # バージョン
-VERSION = 081
+VERSION = 082
 
 # 実行ファイル名
 TARGET_FILE_000 = HFLAP.X
@@ -37,7 +37,7 @@ INCLUDE_FLAGS = -I${ELF2X68K_DIR}/lib/gcc/m68k-elf/13.4.0/include \
 				-I../libs/libfoxenflac-x68k/include
 
 # リンカオプションとライブラリ検索パス
-LDFLAGS = -m68000 -Wl,-s -Wl,--gc-sections \
+LDFLAGS = -Wl,-s -Wl,--gc-sections \
 		  -L../libs/libhimem/lib -L../libs/libcmdline/lib \
 		  -L../libs/libj/lib -L../libs/libutf8/lib \
 		  -L../libs/libpcm8a/lib -L../libs/libpcm8pp/lib \
