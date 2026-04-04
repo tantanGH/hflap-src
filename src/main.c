@@ -504,7 +504,7 @@ try:
 
   // initial buffering
   int16_t end_flag = 0;
-  for (int16_t i = 0; i <= num_buffers; i++) {
+  for (int16_t i = 0; i < num_buffers; i++) {
 
     if (end_flag) break;
 
@@ -519,7 +519,7 @@ try:
       // continuous read
       if (flac_decoder.continuous_read_len > 0) {
         size_t remain_len = flac_decoder.continuous_read_len - flac_decoder.continuous_read_pos;
-        if (remain_len <= CONTINUOUS_FLAC_DRAIN_BYTES || i == num_buffers) {
+        if (remain_len <= CONTINUOUS_FLAC_DRAIN_BYTES) {
           memcpy(fread_buffer, fread_buffer + flac_decoder.continuous_read_pos, remain_len);
           flac_decoder.continuous_read_len = CONTINUOUS_FLAC_CONTINUE_BYTES * ((flac_decoder.bps > 16 || flac_decoder.sample_rate > 48000) ? 2 : 1);
           flac_decoder.continuous_read_pos = 0;
@@ -548,9 +548,6 @@ try:
           }
         }
       }
-
-      // fill disk buffer just before start playing
-      if (i == num_buffers) break;
 
       // allocate a new chain table entry in high memory
       CHAIN_TABLE* ct = (CHAIN_TABLE*)himem_calloc(sizeof(CHAIN_TABLE),1);
@@ -614,7 +611,7 @@ try:
       // continuous read
       if (flac_decoder.continuous_read_len > 0) {
         size_t remain_len = flac_decoder.continuous_read_len - flac_decoder.continuous_read_pos;
-        if (remain_len <= CONTINUOUS_FLAC_DRAIN_BYTES || i == num_buffers) {
+        if (remain_len <= CONTINUOUS_FLAC_DRAIN_BYTES) {
           memcpy(fread_buffer, fread_buffer + flac_decoder.continuous_read_pos, remain_len);
           flac_decoder.continuous_read_len = CONTINUOUS_FLAC_CONTINUE_BYTES * ((flac_decoder.bps > 16 || flac_decoder.sample_rate > 48000) ? 2 : 1);
           flac_decoder.continuous_read_pos = 0;
@@ -643,9 +640,6 @@ try:
           }
         }
       }
-
-      // fill disk buffer just before start playing
-      if (i == num_buffers) break;
 
       // allocate a new chain table entry in high memory
       CHAIN_TABLE_EX* ct = (CHAIN_TABLE_EX*)himem_calloc(sizeof(CHAIN_TABLE_EX),1);
