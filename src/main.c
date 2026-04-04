@@ -504,7 +504,7 @@ try:
 
   // initial buffering
   int16_t end_flag = 0;
-  for (int16_t i = 0; i <= num_buffers; i++) {
+  for (int16_t i = 0; i < num_buffers; i++) {
 
     if (end_flag) break;
 
@@ -519,7 +519,7 @@ try:
       // continuous read
       if (flac_decoder.continuous_read_len > 0) {
         size_t remain_len = flac_decoder.continuous_read_len - flac_decoder.continuous_read_pos;
-        if (remain_len <= CONTINUOUS_FLAC_DRAIN_BYTES || i == num_buffers) {
+        if (remain_len <= CONTINUOUS_FLAC_DRAIN_BYTES) {
           memcpy(fread_buffer, fread_buffer + flac_decoder.continuous_read_pos, remain_len);
           flac_decoder.continuous_read_len = CONTINUOUS_FLAC_CONTINUE_BYTES * ((flac_decoder.bps > 16 || flac_decoder.sample_rate > 48000) ? 2 : 1);
           flac_decoder.continuous_read_pos = 0;
@@ -549,18 +549,21 @@ try:
         }
       }
 
-      // fill disk buffer just before start playing
-      if (i == num_buffers) break;
-
       // allocate a new chain table entry in high memory
+#ifdef __mc68060__
       CHAIN_TABLE* ct = (CHAIN_TABLE*)himem_calloc(sizeof(CHAIN_TABLE),1);
+#else
+      CHAIN_TABLE* ct = (CHAIN_TABLE*)himem_malloc(sizeof(CHAIN_TABLE));
+#endif
       if (ct == NULL) {
         strcpy(error_mes, cp932rsc_himem_shortage);
         goto catch;
       }
 
+#ifndef __mc68060__      
       // zero clear
-      //memset(ct, 0, sizeof(CHAIN_TABLE));
+      memset(ct, 0, sizeof(CHAIN_TABLE));
+#endif
 
       // allocate pcm data buffer for this chain table entry
       ct->buffer = himem_malloc(CHAIN_TABLE_BUFFER_BYTES);
@@ -614,7 +617,7 @@ try:
       // continuous read
       if (flac_decoder.continuous_read_len > 0) {
         size_t remain_len = flac_decoder.continuous_read_len - flac_decoder.continuous_read_pos;
-        if (remain_len <= CONTINUOUS_FLAC_DRAIN_BYTES || i == num_buffers) {
+        if (remain_len <= CONTINUOUS_FLAC_DRAIN_BYTES) {
           memcpy(fread_buffer, fread_buffer + flac_decoder.continuous_read_pos, remain_len);
           flac_decoder.continuous_read_len = CONTINUOUS_FLAC_CONTINUE_BYTES * ((flac_decoder.bps > 16 || flac_decoder.sample_rate > 48000) ? 2 : 1);
           flac_decoder.continuous_read_pos = 0;
@@ -644,18 +647,21 @@ try:
         }
       }
 
-      // fill disk buffer just before start playing
-      if (i == num_buffers) break;
-
       // allocate a new chain table entry in high memory
+#ifdef __mc68060__
       CHAIN_TABLE_EX* ct = (CHAIN_TABLE_EX*)himem_calloc(sizeof(CHAIN_TABLE_EX),1);
+#else
+      CHAIN_TABLE_EX* ct = (CHAIN_TABLE_EX*)himem_malloc(sizeof(CHAIN_TABLE_EX));
+#endif
       if (ct == NULL) {
         strcpy(error_mes, cp932rsc_himem_shortage);
         goto catch;
       }
 
+#ifndef __mc68060__
       // zero clear
-      //memset(ct, 0, sizeof(CHAIN_TABLE_EX));
+      memset(ct, 0, sizeof(CHAIN_TABLE_EX));
+#endif
 
       // allocate pcm data buffer for this chain table entry
       size_t buffer_bytes = flac_decoder.sample_rate > 48000 ? CHAIN_TABLE_EX_BUFFER_BYTES * 2 : CHAIN_TABLE_EX_BUFFER_BYTES;
@@ -888,11 +894,19 @@ try:
       }
 
       // allocate the next chain table entry
+#ifdef __mc68060__
       CHAIN_TABLE* ct = (CHAIN_TABLE*)himem_calloc(sizeof(CHAIN_TABLE),1);
+#else
+      CHAIN_TABLE* ct = (CHAIN_TABLE*)himem_malloc(sizeof(CHAIN_TABLE));
+#endif
       if (ct == NULL) {
         strcpy(error_mes, cp932rsc_himem_shortage);
         goto catch;
       }
+
+#ifndef __mc68060__
+      memset(ct, 0, sizeof(CHAIN_TABLE));
+#endif
 
       // allocate pcm buffer for this chain table entry
       ct->buffer = himem_malloc(CHAIN_TABLE_BUFFER_BYTES);
@@ -1046,11 +1060,19 @@ try:
       }
 
       // allocate the next chain table entry
+#ifdef __mc68060__
       CHAIN_TABLE_EX* ct = (CHAIN_TABLE_EX*)himem_calloc(sizeof(CHAIN_TABLE_EX),1);
+#else
+      CHAIN_TABLE_EX* ct = (CHAIN_TABLE_EX*)himem_malloc(sizeof(CHAIN_TABLE_EX));
+#endif
       if (ct == NULL) {
         strcpy(error_mes, cp932rsc_himem_shortage);
         goto catch;
       }
+
+#ifndef __mc68060__
+      memset(ct, 0, sizeof(CHAIN_TABLE_EX));
+#endif
 
       // allocate pcm buffer for this chain table entry
       size_t buffer_bytes = flac_decoder.sample_rate > 48000 ? CHAIN_TABLE_EX_BUFFER_BYTES * 2 : CHAIN_TABLE_EX_BUFFER_BYTES;
