@@ -140,7 +140,8 @@ int32_t flac_decode_get_skip_offset(FLAC_DECODE_HANDLE* decode, int32_t fd) {
 //
 //  setup decode operation
 //
-int32_t flac_decode_setup(FLAC_DECODE_HANDLE* decode, void* flac_data, size_t flac_data_len, size_t continuous_read_len, int16_t brightness, int16_t half_size) {
+int32_t flac_decode_setup(FLAC_DECODE_HANDLE* decode, void* flac_data, size_t flac_data_len, 
+                          size_t continuous_read_len, int16_t brightness, int16_t half_size) {
 
   int32_t rc = -1;
 
@@ -159,6 +160,7 @@ int32_t flac_decode_setup(FLAC_DECODE_HANDLE* decode, void* flac_data, size_t fl
   decode->bps = -1;
   decode->num_samples = 0;
   decode->resample_counter = 0;
+  decode->pending_len = 0;
 
   // obtain sampling parameters
   fx_flac_state_t state;
@@ -284,14 +286,16 @@ int32_t flac_decode_setup(FLAC_DECODE_HANDLE* decode, void* flac_data, size_t fl
 
         tag_ofs += mime_type_size;
 
-        //printf("mime_type_size=%d\n", mime_type_size);
-
+#ifdef __VERBOSE__
+        printf("mime_type_size=%d\n", mime_type_size);
+#endif
         size_t picture_desc_size = (decode->flac_data[tag_ofs] << 24) + 
                                    (decode->flac_data[tag_ofs+1] << 16) +
                                    (decode->flac_data[tag_ofs+2] << 8) +
                                     decode->flac_data[tag_ofs+3];
-
-        //printf("picture_desc_size=%d\n", picture_desc_size);
+#ifdef __VERBOSE__
+        printf("picture_desc_size=%d\n", picture_desc_size);
+#endif
 
         tag_ofs += 4 + picture_desc_size + 4 + 4 + 4 + 4;
 
@@ -299,17 +303,20 @@ int32_t flac_decode_setup(FLAC_DECODE_HANDLE* decode, void* flac_data, size_t fl
                               (decode->flac_data[tag_ofs+1] << 16) +
                               (decode->flac_data[tag_ofs+2] << 8) +
                                decode->flac_data[tag_ofs+3];
-      
-        //printf("picture_size=%d\n", picture_size);
 
+#ifdef __VERBOSE__
+        printf("picture_size=%d\n", picture_size);
+#endif
         tag_ofs += 4;
 
         uint8_t* picture_data = &(decode->flac_data[tag_ofs]);
         if (picture_size > 2 && picture_data[0] == 0xff && picture_data[1] == 0xd8) {
           JPEG jpg;
           jpeg_open(&jpg, brightness);
-          if (jpeg_draw(&jpg, picture_data, picture_size, 0) != 0) {
-//          printf("unsupported jpeg artwork format. (progressive JPEG?)\n");
+          if (jpeg_draw(&jpg, picture_data, picture_size, 0) != 0) {  
+#ifdef __VERBOSE__
+            printf("unsupported jpeg artwork format. (progressive JPEG?)\n");
+#endif
           }
           jpeg_close(&jpg);
         }
@@ -317,7 +324,12 @@ int32_t flac_decode_setup(FLAC_DECODE_HANDLE* decode, void* flac_data, size_t fl
         tag_ofs += picture_size;
 
       } else {
-
+#ifdef __VERBOSE__
+        uint8_t mime[12];
+        memcpy(mime, &(decode->flac_data[tag_ofs]), 10);
+        mime[10] = '\0';
+        printf("unsupported mime type. (%s)\n");
+#endif
         tag_ofs += meta_size - 8;
 
       }
@@ -341,7 +353,7 @@ exit:
 //
 //  decode flac stream
 //
-int32_t flac_decode_full(FLAC_DECODE_HANDLE* decode, int16_t* decode_buffer, size_t decode_buffer_bytes, size_t* decoded_bytes) {
+int32_t flac_decode_full(FLAC_DECODE_HANDLE* decode, int16_t* decode_buffer, size_t decode_buffer_bytes, size_t* decoded_bytes, SPECTRUM_HANDLE* spectrum) {
 
   // default return code
   int32_t rc = -1;
@@ -365,6 +377,11 @@ int32_t flac_decode_full(FLAC_DECODE_HANDLE* decode, int16_t* decode_buffer, siz
                         &sample_len) == FLAC_ERR) goto exit;
 
     decode->flac_data_pos += used_bytes;
+
+    if (spectrum != NULL) {
+      spectrum_process(spectrum, &(decode_buffer[decode_ofs]), sample_len / decode->channels);
+    }
+
     if (decode->continuous_read_len > 0) decode->continuous_read_pos += used_bytes;
     decode_ofs += sample_len;
 
@@ -396,7 +413,7 @@ exit:
 //
 //  decode flac stream with resampling
 //
-int32_t flac_decode_resample(FLAC_DECODE_HANDLE* decode, int16_t* decode_buffer, size_t decode_buffer_bytes, int16_t resample_freq, size_t* decoded_bytes) {
+int32_t flac_decode_resample(FLAC_DECODE_HANDLE* decode, int16_t* decode_buffer, size_t decode_buffer_bytes, int16_t resample_freq, size_t* decoded_bytes, SPECTRUM_HANDLE* spectrum) {
 
   // default return code
   int32_t rc = -1;
@@ -416,6 +433,11 @@ int32_t flac_decode_resample(FLAC_DECODE_HANDLE* decode, int16_t* decode_buffer,
                         &sample_len) == FLAC_ERR) goto exit;
 
     decode->flac_data_pos += used_bytes;
+
+    if (spectrum != NULL) {
+      spectrum_process(spectrum, &(decode_buffer[decode_ofs]), sample_len / decode->channels);
+    }
+
     if (decode->continuous_read_len > 0) decode->continuous_read_pos += used_bytes;
 
     // end of FLAC

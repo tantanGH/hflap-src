@@ -7,7 +7,7 @@ endif
 .SUFFIXES:
 
 # バージョン
-VERSION = 083
+VERSION = 090
 
 # 実行ファイル名
 TARGET_FILE_000 = HFLAP.X
@@ -44,13 +44,13 @@ LDFLAGS = -Wl,-s -Wl,--gc-sections \
 		  -L../libs/libjpeg/lib -L../libs/libfoxenflac-x68k/lib
 
 # *.c ソースファイル
-C_SRCS = cp932rsc.c flac_decode.c main.c
+C_SRCS = cp932rsc.c flac_decode.c spectrum.c main.c
 
 # *.s ソースファイル
 ASM_SRCS = 
 
 # *.h source files
-HEADER_SRCS = keyboard.h cp932rsc.h flac_decode.h hflap.h
+HEADER_SRCS = keyboard.h cp932rsc.h flac_decode.h spectrum.h hflap.h
 
 # リンク対象のライブラリファイル
 LIBS_000 = -lhimem -lcmdline -lj -lutf8 -ljpeg -lpcm8a -lpcm8pp -lfoxenflac
