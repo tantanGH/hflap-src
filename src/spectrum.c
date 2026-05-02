@@ -6,8 +6,8 @@
 
 // --- Coefficients for 11025 Hz ---
 static const FILTER_COEFFS coeff11[] = {
-{ 91, 0, -91, -7991, 3914 }, // 120Hz
-{ 185, 0, -185, -7743, 3726 }, // 250Hz
+{ 140, 0, -140, -6958, 3344 }, // 100Hz
+{ 331, 0, -331, -6521, 2963 }, // 250Hz
 { 351, 0, -351, -7188, 3394 }, // 500Hz
 { 624, 0, -624, -5846, 2847 }, // 1000Hz
 { 952, 0, -952, -2627, 2192 }, // 2000Hz
@@ -17,8 +17,8 @@ static const FILTER_COEFFS coeff11[] = {
 
 // --- Coefficients for 12000 Hz ---
 static const FILTER_COEFFS coeff12[] = {
-{ 84, 0, -84, -8008, 3928 }, // 120Hz
-{ 171, 0, -171, -7783, 3754 }, // 250Hz
+{ 129, 0, -129, -6981, 3366 }, // 100Hz
+{ 306, 0, -306, -6580, 3012 }, // 250Hz
 { 325, 0, -325, -7284, 3445 }, // 500Hz
 { 585, 0, -585, -6081, 2926 }, // 1000Hz
 { 918, 0, -918, -3178, 2261 }, // 2000Hz
@@ -28,8 +28,8 @@ static const FILTER_COEFFS coeff12[] = {
 
 // --- Coefficients for 22050 Hz ---
 static const FILTER_COEFFS coeff22[] = {
-{ 46, 0, -46, -8095, 4004 }, // 120Hz
-{ 95, 0, -95, -7982, 3906 }, // 250Hz
+{ 72, 0, -72, -7103, 3482 }, // 100Hz
+{ 174, 0, -174, -6885, 3277 }, // 250Hz
 { 185, 0, -185, -7743, 3726 }, // 500Hz
 { 351, 0, -351, -7188, 3394 }, // 1000Hz
 { 624, 0, -624, -5846, 2847 }, // 2000Hz
@@ -39,8 +39,8 @@ static const FILTER_COEFFS coeff22[] = {
 
 // --- Coefficients for 24000 Hz ---
 static const FILTER_COEFFS coeff24[] = {
-{ 42, 0, -42, -8103, 4011 }, // 120Hz
-{ 87, 0, -87, -8000, 3921 }, // 250Hz
+{ 66, 0, -66, -7115, 3493 }, // 100Hz
+{ 160, 0, -160, -6914, 3304 }, // 250Hz
 { 171, 0, -171, -7783, 3754 }, // 500Hz
 { 325, 0, -325, -7284, 3445 }, // 1000Hz
 { 585, 0, -585, -6081, 2926 }, // 2000Hz
@@ -50,8 +50,8 @@ static const FILTER_COEFFS coeff24[] = {
 
 // --- Coefficients for 44100 Hz (1.13) ---
 static const FILTER_COEFFS coeff44[] = {
-{ 23, 0, -23, -8144, 4050 }, // 120Hz
-{ 48, 0, -48, -8091, 4000 }, // 250Hz
+{ 36, 0, -36, -7177, 3552 }, // 100Hz
+{ 89, 0, -89, -7067, 3447 }, // 250Hz
 { 95, 0, -95, -7982, 3906 }, // 500Hz
 { 185, 0, -185, -7743, 3726 }, // 1000Hz
 { 351, 0, -351, -7188, 3394 }, // 2000Hz
@@ -61,8 +61,8 @@ static const FILTER_COEFFS coeff44[] = {
 
 // --- Coefficients for 48000 Hz (1.13) ---
 static const FILTER_COEFFS coeff48[] = {
-{ 21, 0, -21, -8148, 4053 }, // 120Hz
-{ 44, 0, -44, -8099, 4008 }, // 250Hz
+{ 33, 0, -33, -7182, 3558 }, // 100Hz
+{ 82, 0, -82, -7082, 3461 }, // 250Hz
 { 87, 0, -87, -8000, 3921 }, // 500Hz
 { 171, 0, -171, -7783, 3754 }, // 1000Hz
 { 325, 0, -325, -7284, 3445 }, // 2000Hz
@@ -102,18 +102,18 @@ int32_t spectrum_open(SPECTRUM_HANDLE* handle, int32_t sample_rate, int16_t bps,
 
   // ピークホールド値の初期化
   for (int16_t b = 0; b < NUM_BANDS; b++) {
-    handle->peak_value_L[b] = 0;
-    handle->peak_value_R[b] = 0;
+    handle->current_frame_max_L[b] = 0;
+    handle->current_frame_max_R[b] = 0;
   }
-
-  // ダウンサンプリング用のカウンタ初期化
-  handle->resample_counter = 0;
 
   // 表示スケールの設定
   handle->display_scale = display_scale;
 
   // 落下速度の設定
   handle->fall_speed = fall_speed;
+
+  // ダウンサンプリング用のカウンタ初期化
+  handle->resample_counter = 0;
 
   // メーター値の初期化
   handle->meter_values_pos = 0;
@@ -123,10 +123,21 @@ int32_t spectrum_open(SPECTRUM_HANDLE* handle, int32_t sample_rate, int16_t bps,
   }
   memset(handle->meter_values, 0, sizeof(METER_VALUE) * MAX_METER_FRAMES);
 
+  // ピーク用メーター値の初期化
+  handle->meter_peak_values = himem_malloc(sizeof(METER_VALUE) * MAX_METER_FRAMES);
+  if (handle->meter_peak_values == NULL) {
+    return -1; // メモリ確保失敗
+  }
+  memset(handle->meter_peak_values, 0, sizeof(METER_VALUE) * MAX_METER_FRAMES);
+
   // 最終出力値の初期化
   for (int16_t b = 0; b < NUM_BANDS; b++) {
-    handle->last_meter_L[b] = 0;
-    handle->last_meter_R[b] = 0;
+    handle->bar_height_L[b] = 0;
+    handle->bar_height_R[b] = 0;
+    handle->peak_dot_height_L[b] = 0;
+    handle->peak_dot_height_R[b] = 0;
+    handle->peak_dot_hold_cnt_L[b] = 0;
+    handle->peak_dot_hold_cnt_R[b] = 0;
   }
 
   return 0; // 成功
@@ -138,8 +149,13 @@ void spectrum_close(SPECTRUM_HANDLE* handle) {
     himem_free(handle->meter_values);
     handle->meter_values = NULL;
   }
+  if (handle->meter_peak_values != NULL) {
+    himem_free(handle->meter_peak_values);
+    handle->meter_peak_values = NULL;
+  }
 }
 
+// biquadフィルタの処理
 static int32_t process_biquad(int32_t input, BIQUAD_STATE* s, const FILTER_COEFFS* coeffs) {
     // 32bitで計算
     int32_t acc;
@@ -167,7 +183,7 @@ void spectrum_process(SPECTRUM_HANDLE* handle, const int16_t* pcm, size_t sample
 
   uint32_t accumulator = handle->resample_counter;
   uint32_t threshold = (handle->sample_rate == 44100 || handle->sample_rate == 88200) ? 44100000 : 48000000;
-  const uint32_t vsync_step = handle->bps == 16 ? VSYNC_BPS16_HZ : VSYNC_BPS24_HZ; 
+  const uint32_t vsync_step = VSYNC_55HZ; //handle->bps == 16 ? VSYNC_55HZ : VSYNC_27HZ; 
 
   for (size_t i = 0; i < samples; i++) {
 
@@ -188,8 +204,9 @@ void spectrum_process(SPECTRUM_HANDLE* handle, const int16_t* pcm, size_t sample
         if (outR < 0) outR = -outR;
 
         // VSYNC区間内での最大値を保持(ピークホールド)
-        if (outL > handle->peak_value_L[b]) handle->peak_value_L[b] = outL;
-        if (outR > handle->peak_value_R[b]) handle->peak_value_R[b] = outR;
+        if (outL > handle->current_frame_max_L[b]) handle->current_frame_max_L[b] = outL;
+        if (outR > handle->current_frame_max_R[b]) handle->current_frame_max_R[b] = outR;
+
       }
     }
 
@@ -206,8 +223,9 @@ void spectrum_process(SPECTRUM_HANDLE* handle, const int16_t* pcm, size_t sample
         if (outR < 0) outR = -outR;
 
         // VSYNC区間内での最大値を保持(ピークホールド)
-        if (outL > handle->peak_value_L[b]) handle->peak_value_L[b] = outL;
-        if (outR > handle->peak_value_R[b]) handle->peak_value_R[b] = outR;
+        if (outL > handle->current_frame_max_L[b]) handle->current_frame_max_L[b] = outL;
+        if (outR > handle->current_frame_max_R[b]) handle->current_frame_max_R[b] = outR;
+
       }
     }
 
@@ -217,50 +235,81 @@ void spectrum_process(SPECTRUM_HANDLE* handle, const int16_t* pcm, size_t sample
       accumulator -= threshold;
 
       if (handle->meter_values_pos < MAX_METER_FRAMES) {
-        METER_VALUE* v = &handle->meter_values[handle->meter_values_pos];
-        
+        METER_VALUE* v_bar = &handle->meter_values[handle->meter_values_pos];
+        METER_VALUE* v_dot = &handle->meter_peak_values[handle->meter_values_pos];
+
         for (int b = 0; b < NUM_BANDS; b++) {
 
-          // 一旦 32bit で計算
-          int32_t curL = ((int32_t)handle->peak_value_L[b] * handle->display_scale) >> 15;
-          int32_t curR = ((int32_t)handle->peak_value_R[b] * handle->display_scale) >> 15;
+          // 1フレーム中の最大値をスケール変換
+          int32_t curL = (handle->current_frame_max_L[b] * handle->display_scale) >> 15;
+          int32_t curR = (handle->current_frame_max_R[b] * handle->display_scale) >> 15;
 
-          // display_scale を超えないようにリミッターをかける
+          // リミッター
           if (curL > handle->display_scale) curL = handle->display_scale;
           if (curR > handle->display_scale) curR = handle->display_scale;
 
-          uint8_t current_L = (uint8_t)curL;
-          uint8_t current_R = (uint8_t)curR;
-
-          // --- 落下演出（ディケイ）ロジック ---
-          // 左チャンネル
-          if (current_L >= handle->last_meter_L[b]) {
-            handle->last_meter_L[b] = current_L; // 上がる時は瞬時
+          // --- A. メインバーの落下演出 ---
+          if ((uint8_t)curL >= handle->bar_height_L[b]) {
+            handle->bar_height_L[b] = (uint8_t)curL;
           } else {
-            if (handle->last_meter_L[b] > handle->fall_speed)
-              handle->last_meter_L[b] -= handle->fall_speed; // ゆったり落とす
+            if (handle->bar_height_L[b] > handle->fall_speed)
+              handle->bar_height_L[b] -= handle->fall_speed;
             else
-              handle->last_meter_L[b] = 0;
+              handle->bar_height_L[b] = 0;
+          }
+          if ((uint8_t)curR >= handle->bar_height_R[b]) {
+            handle->bar_height_R[b] = (uint8_t)curR;
+          } else {
+            if (handle->bar_height_R[b] > handle->fall_speed)
+              handle->bar_height_R[b] -= handle->fall_speed;
+            else
+              handle->bar_height_R[b] = 0;
           }
 
-          // 右チャンネル
-          if (current_R >= handle->last_meter_R[b]) {
-            handle->last_meter_R[b] = current_R;
+          // --- B. ピークドットの維持・落下演出 ---
+          if ((uint8_t)curL >= handle->peak_dot_height_L[b]) {
+            // 新しい頂点に達したら更新し、タイマーリセット
+            handle->peak_dot_height_L[b] = (uint8_t)curL;
+            handle->peak_dot_hold_cnt_L[b] = PEAK_HOLD_FRAMES;
           } else {
-            if (handle->last_meter_R[b] > handle->fall_speed)
-              handle->last_meter_R[b] -= handle->fall_speed;
-            else
-              handle->last_meter_R[b] = 0;
+            // 頂点を下回っている場合、タイマーを確認
+            if (handle->peak_dot_hold_cnt_L[b] > 0) {
+              handle->peak_dot_hold_cnt_L[b]--;
+            } else {
+              // タイマー切れならゆっくり落下（バーより遅い速度が綺麗）
+              //if (handle->peak_dot_height_L[b] > 0) handle->peak_dot_height_L[b]--;
+              // タイマー切れなら即消去
+              handle->peak_dot_height_L[b] = 0;
+            }
+          }
+          if ((uint8_t)curR >= handle->peak_dot_height_R[b]) {
+            // 新しい頂点に達したら更新し、タイマーリセット
+            handle->peak_dot_height_R[b] = (uint8_t)curR;
+            handle->peak_dot_hold_cnt_R[b] = PEAK_HOLD_FRAMES;
+          } else {
+            // 頂点を下回っている場合、タイマーを確認
+            if (handle->peak_dot_hold_cnt_R[b] > 0) {
+              handle->peak_dot_hold_cnt_R[b]--;
+            } else {
+              // タイマー切れならゆっくり落下（バーより遅い速度が綺麗）
+              //if (handle->peak_dot_height_R[b] > 0) handle->peak_dot_height_R[b]--;
+              // タイマー切れなら即消去
+              handle->peak_dot_height_R[b] = 0;              
+            }
           }
 
-          // 最終的な値をバッファに書き込み
-          v->meter_L[b] = handle->last_meter_L[b];
-          v->meter_R[b] = handle->last_meter_R[b];
+          // --- C. 最終結果をバッファへ保存 ---
+          v_bar->meter_L[b] = handle->bar_height_L[b];
+          v_dot->meter_L[b] = handle->peak_dot_height_L[b];
+          v_bar->meter_R[b] = handle->bar_height_R[b];
+          v_dot->meter_R[b] = handle->peak_dot_height_R[b];
 
-          // ピークリセット
-          handle->peak_value_L[b] = 0;
-          handle->peak_value_R[b] = 0;
+          // 解析用の最大値はリセットして次のフレームへ
+          handle->current_frame_max_L[b] = 0;
+          handle->current_frame_max_R[b] = 0;
+
         }
+
         handle->meter_values_pos++;
       }
     }

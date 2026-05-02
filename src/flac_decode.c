@@ -435,7 +435,7 @@ int32_t flac_decode_resample(FLAC_DECODE_HANDLE* decode, int16_t* decode_buffer,
     decode->flac_data_pos += used_bytes;
 
     if (spectrum != NULL) {
-      spectrum_process(spectrum, &(decode_buffer[decode_ofs]), sample_len / decode->channels);
+      spectrum_process(spectrum, decode->samples, sample_len / decode->channels);
     }
 
     if (decode->continuous_read_len > 0) decode->continuous_read_pos += used_bytes;

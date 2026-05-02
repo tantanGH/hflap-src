@@ -2,16 +2,20 @@ import math
 
 # 設定
 sample_rates = [11025, 12000, 22050, 24000, 44100, 48000]
-target_freqs = [120, 250, 500, 1000, 2000, 4000, 8000] # 16000HzはサンプルレートによってはNyquist周波数を超えるため除外
+target_freqs = [100, 250, 500, 1000, 2000, 4000, 8000] # 16000HzはサンプルレートによってはNyquist周波数を超えるため除外
 shift_bits = 12
 
-def calculate_biquad_bandpass(freq, fs, q=1.5):
-#def calculate_biquad_bandpass(freq, fs, q=0.707):
+#def calculate_biquad_bandpass(freq, fs, q=1.5):
+def calculate_biquad_bandpass(freq, fs, q=0.707):
     w0 = 2 * math.pi * freq / fs
     alpha = math.sin(w0) / (2 * q)
     
     # 共通係数
     a0 = 1 + alpha
+
+    # 低域のゲイン調整
+    if freq <= 250:
+        a0 *= 1.13
     
     # 正規化して算出
     b0 = (alpha) / a0
