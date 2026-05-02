@@ -229,8 +229,8 @@ static void show_help_message() {
   printf("     -v<n> ... volume (1-15, default:%d)\n", DEFAULT_VOLUME);
   printf("     -t<n> ... album art display brightness (1-100, default:off)\n");
   printf("     -b<n> ... buffer size [x 64KB] (3-32,default:%d)\n", DEFAULT_BUFFERS);
-  printf("     -f    ... full disk read mode (default:continuous disk read)\n");
   printf("     -a[n] ... spectrum analyzer mode (0-%d,default:6)\n", NUM_SPECTRUM_MODES-1);
+  printf("     -f    ... full disk read mode (default:continuous disk read)\n");
   printf("     -n    ... no progress bar\n");
   printf("     -s    ... use main memory for file reading (SCSI disk)\n");
   printf("     -h    ... show help message\n");
