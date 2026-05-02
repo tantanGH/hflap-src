@@ -27,6 +27,9 @@
 // codec
 #include "flac_decode.h"
 
+// spectrum analyzer
+#include "spectrum.h"
+
 // application
 #include "hflap.h"
 
@@ -52,9 +55,62 @@ static int32_t g_funckey_mode = -1;
 //
 static uint32_t g_original_pcm8pp_frequency_mode = 0;
 
-// file read buffers
+//
+//  file read buffers
+//
 static void* fread_buffer = NULL;
 static void* fread_staging_buffer = NULL;
+
+//
+//  spectrum analyzer handle
+//
+static SPECTRUM_HANDLE* g_spectrum = NULL;
+volatile static size_t g_spectrum_meter_pos = 0;
+volatile static int16_t g_spectrum_mode = 0;
+volatile static int16_t g_spectrum_mode_prev = 0;
+
+//
+//  spectrum analyzer freq labels
+//
+// 100Hz (0-15列)
+static uint16_t band_label_100[] = {
+  0x0000, 0x3770, 0x1550, 0x1550, 0x1550, 0x1770, 0x0000, 0x0000
+};
+
+// 250Hz (16-31列)
+static uint16_t band_label_250[] = {
+  0x0000, 0x3bb8, 0x0a28, 0x3ba8, 0x20a8, 0x3bb8, 0x0000, 0x0000
+};
+
+// 500Hz (32-47列)
+static uint16_t band_label_500[] = {
+  0x0000, 0x3bb8, 0x22b8, 0x3aa8, 0x0aa8, 0x3bb8, 0x0000, 0x0000
+};
+
+// 1KHz (48-63列)
+static uint16_t band_label_1k[] = {
+  0x0000, 0x3480, 0x1500, 0x1600, 0x1500, 0x1480, 0x0000, 0x0000
+};
+
+// 2KHz (64-79列)
+static uint16_t band_label_2k[] = {
+  0x0000, 0x3a40, 0x0a80, 0x3b00, 0x2280, 0x3a40, 0x0000, 0x0000
+};
+
+// 4KHz (80-95列)
+static uint16_t band_label_4k[] = {
+  0x0000, 0x2a40, 0x2a80, 0x3b00, 0x0a80, 0x0a40, 0x0000, 0x0000
+};
+
+// 8KHz (96-111列)
+static uint16_t band_label_8k[] = {
+  0x0000, 0x3a40, 0x2a80, 0x3b00, 0x2a80, 0x3a40, 0x0000, 0x0000
+};
+
+static uint16_t* g_band_labels[] = {
+  band_label_100, band_label_250, band_label_500, 
+  band_label_1k,  band_label_2k,  band_label_4k,  band_label_8k
+};
 
 //
 //  abort vector handler
@@ -64,6 +120,11 @@ static __attribute__((interrupt)) void abort_application() {
   // resume abort vectors
   if (g_abort_vector1 != NULL) _dos_intvcs(0xFFF1, g_abort_vector1);
   if (g_abort_vector2 != NULL) _dos_intvcs(0xFFF2, g_abort_vector2);  
+
+  // stop spectrum analyzer
+  if (g_spectrum != NULL) {
+    _iocs_vdispst(NULL, 0, 0);
+  }
 
   // stop pcm8a
   if (pcm8a_isavailable()) {
@@ -168,10 +229,146 @@ static void show_help_message() {
   printf("     -v<n> ... volume (1-15, default:%d)\n", DEFAULT_VOLUME);
   printf("     -t<n> ... album art display brightness (1-100, default:off)\n");
   printf("     -b<n> ... buffer size [x 64KB] (3-32,default:%d)\n", DEFAULT_BUFFERS);
+  printf("     -a[n] ... spectrum analyzer mode (0-%d,default:6)\n", NUM_SPECTRUM_MODES-1);
   printf("     -f    ... full disk read mode (default:continuous disk read)\n");
   printf("     -n    ... no progress bar\n");
   printf("     -s    ... use main memory for file reading (SCSI disk)\n");
   printf("     -h    ... show help message\n");
+}
+
+//
+//  global spectrum analyzer handle
+//
+//   g_spectrum_mode:
+//    bit0: bar color - 0:cyan 1:yellow
+//    bit1: L-band reverse - 0:normal 1:re
+//    bit2: peak hold - 0:no 1:yes
+//    bit3: band label - 0:no 1:yes
+//
+static void __attribute__((interrupt)) refresh_spectrum_analyzer() {
+
+  if (g_spectrum == NULL || g_spectrum_meter_pos >= g_spectrum->meter_values_pos) {
+    return;
+  }
+
+  int16_t force_refresh = 0;
+  if (g_spectrum_mode != g_spectrum_mode_prev) {
+    // mode changed, clear display
+    for (int16_t p = 0; p < 2; p++) {
+      int16_t ofsL = 10;
+      int16_t ofsR = 25;
+      for (int16_t b = 0; b < NUM_BANDS; b++) {
+        uint16_t* pL = &(((uint16_t*)(p ? 0xe20000 : 0xe00000))[0x80 * SPECTRUM_BASE_YPOS + 0x40 * 6 + ofsL]);
+        uint16_t* pR = &(((uint16_t*)(p ? 0xe20000 : 0xe00000))[0x80 * SPECTRUM_BASE_YPOS + 0x40 * 6 + ofsR]);
+        for (int16_t m = 0; m < 6; m++) {
+          *pL = 0x0000;  
+          *pR = 0x0000;
+          pL -= 0x40;   
+          pR -= 0x40;
+        }
+        for (int16_t m = 0; m <= SPECTRUM_SCALE; m++) {
+          *pL = 0x0000;  
+          *pR = 0x0000;
+          pL -= 0x80;   
+          pR -= 0x80;
+        }
+        ofsL += 2;
+        ofsR += 2;
+      }
+    }
+    g_spectrum_mode_prev = g_spectrum_mode;
+    force_refresh = 1;
+  }
+
+  uint16_t* TVRAM0 = (uint16_t*)(g_spectrum_mode & 1 ? 0xe20000 : 0xe00000);
+  uint16_t* TVRAM1 = (uint16_t*)(g_spectrum_mode & 1 ? 0xe00000 : 0xe20000);
+  METER_VALUE* v = &g_spectrum->meter_values[g_spectrum_meter_pos];
+  METER_VALUE* vp = &g_spectrum->meter_peak_values[g_spectrum_meter_pos];
+  g_spectrum_meter_pos++;
+
+  if (g_spectrum_meter_pos == 1 || force_refresh) {
+    for (int16_t b = 0; b < NUM_BANDS; b++) {
+      int16_t ofsL = g_spectrum_mode & 2 ? 22 - b * 2 : 10 + b * 2;
+      int16_t ofsR = 25 + b * 2;
+      uint16_t* pL = &TVRAM0[0x80 * SPECTRUM_BASE_YPOS + ofsL];
+      uint16_t* pR = &TVRAM0[0x80 * SPECTRUM_BASE_YPOS + ofsR];
+      for (int16_t m = 0; m <= v->meter_L[b]; m++) {
+        *pL = 0xffff;
+        pL -= 0x80;     
+      }
+      for (int16_t m = 0; m <= v->meter_R[b]; m++) {
+        *pR = 0xffff;
+        pR -= 0x80;  
+      }
+      if (g_spectrum_mode & 4) { // peak hold
+        TVRAM1[0x80 * (SPECTRUM_BASE_YPOS - vp->meter_L[b]) + ofsL] = 0xffff;
+        TVRAM1[0x80 * (SPECTRUM_BASE_YPOS - vp->meter_R[b]) + ofsR] = 0xffff;
+      }
+      if (g_spectrum_mode & 8) { // band label
+        for (int16_t i = 0; i < 6; i++) {
+          TVRAM0[0x80 * SPECTRUM_BASE_YPOS + 0x40 * i + ofsL] = g_band_labels[b][i];
+          TVRAM0[0x80 * SPECTRUM_BASE_YPOS + 0x40 * i + ofsR] = g_band_labels[b][i];
+        }
+      }
+    }
+    return;
+  }
+
+  METER_VALUE* v0 = &g_spectrum->meter_values[g_spectrum_meter_pos-2];
+  for (int16_t b = 0; b < NUM_BANDS; b++) {
+    uint8_t meter_value_L = v->meter_L[b];
+    uint8_t meter_value_R = v->meter_R[b];
+    uint8_t meter_value_L0 = v0->meter_L[b];
+    uint8_t meter_value_R0 = v0->meter_R[b];
+    int16_t ofsL = g_spectrum_mode & 2 ? 22 - b * 2 : 10 + b * 2;
+    int16_t ofsR = 25 + b * 2;
+    uint16_t* pL = &TVRAM0[0x80 * (240 - meter_value_L0) + ofsL];
+    uint16_t* pR = &TVRAM0[0x80 * (240 - meter_value_R0) + ofsR];
+    if (meter_value_L > meter_value_L0) {
+      for (int16_t m = meter_value_L0 + 1; m <= meter_value_L; m++) {
+        pL -= 0x80;
+        *pL = 0xffff; 
+      }
+    } else {
+      for (int16_t m = meter_value_L0; m > meter_value_L; m--) {
+        *pL = 0x0000;
+        pL += 0x80;
+      }
+    }
+    if (meter_value_R > meter_value_R0) {
+      for (int16_t m = meter_value_R0 + 1; m <= meter_value_R; m++) {
+        pR -= 0x80;
+        *pR = 0xffff;
+      }
+    } else {
+      for (int16_t m = meter_value_R0; m > meter_value_R; m--) {
+        *pR = 0x0000;
+        pR += 0x80;
+      }
+    }      
+  }
+  
+  if (g_spectrum_mode & 4) { // peak hold
+    METER_VALUE* vp0 = &g_spectrum->meter_peak_values[g_spectrum_meter_pos-2];
+    for (int16_t b = 0; b < NUM_BANDS; b++) {
+      uint8_t meter_value_L = vp->meter_L[b];
+      uint8_t meter_value_R = vp->meter_R[b];
+      uint8_t meter_value_L0 = vp0->meter_L[b];
+      uint8_t meter_value_R0 = vp0->meter_R[b];
+      int16_t ofsL = g_spectrum_mode & 2 ? 22 - b * 2 : 10 + b * 2;
+      int16_t ofsR = 25 + b * 2;
+      if (meter_value_L != meter_value_L0) {
+        // 通常の差分描画
+        TVRAM1[0x80 * (240 - meter_value_L0) + ofsL] = 0x0000;
+        TVRAM1[0x80 * (240 - meter_value_L)  + ofsL] = 0xffff;
+      }
+      if (meter_value_R != meter_value_R0) {
+        // 通常の差分描画
+        TVRAM1[0x80 * (240 - meter_value_R0) + ofsR] = 0x0000;
+        TVRAM1[0x80 * (240 - meter_value_R)  + ofsR] = 0xffff;
+      }
+    }
+  }
 }
 
 //
@@ -200,6 +397,7 @@ int32_t main(int32_t argc_, uint8_t* argv_[]) {
   int16_t pic_brightness = 0;
   int16_t quiet_mode = 0;
   int16_t continuous_read = 1;
+  int16_t spectrum_analyzer = 0;
 
   // total number of chains
   int32_t num_chains = 0;
@@ -247,6 +445,17 @@ int32_t main(int32_t argc_, uint8_t* argv_[]) {
         quiet_mode = 1;
       } else if (argv[i][1] == 'f') {
         continuous_read = 0;
+      } else if (argv[i][1] == 'a') {
+        spectrum_analyzer = 1;
+        if (strlen(argv[i]) == 2) {
+          g_spectrum_mode = 6;   // default spectrum analyzer mode
+        } else {
+          g_spectrum_mode = atoi(argv[i]+2);
+          if (g_spectrum_mode < 0 || g_spectrum_mode >= NUM_SPECTRUM_MODES) {
+            show_help_message();
+            goto exit;
+          }
+        }
       } else if (argv[i][1] == 't') {
         pic_brightness = atoi(argv[i]+2);
         if (pic_brightness < 0 || pic_brightness > 100 || strlen(argv[i]) < 3) {
@@ -332,6 +541,10 @@ loop:
 
   }
 
+  if (spectrum_analyzer) {
+    _dos_c_cls_al(); 
+  }
+
   // current chain table entries
   CHAIN_TABLE* cur_chain_table = NULL;
   CHAIN_TABLE_EX* cur_chain_table_ex = NULL;
@@ -344,6 +557,9 @@ loop:
 
   // file read handle
   int32_t fd = -1;
+
+  // spectrum analyzer handle
+  SPECTRUM_HANDLE spectrum = { 0 };
 
 try:
 
@@ -453,8 +669,21 @@ try:
     goto catch;
   }
 
+  // initialize spectrum analyzer if spectrum analyzer mode is enabled
+  //int16_t spectrum_interrupt_interval = flac_decoder.bps == 16 ? 1 : 2;   // set interrupt count for spectrum analyzer refresh (16bps:1, 24bps:2)
+  int16_t spectrum_interrupt_interval = 1;
+  if (spectrum_analyzer) {
+    if (spectrum_open(&spectrum, flac_decoder.sample_rate, flac_decoder.bps, SPECTRUM_SCALE, SPECTRUM_FALL_SPEED) != 0) {
+      strcpy(error_mes, cp932rsc_spectrum_analyzer_init_error);
+      goto catch;
+    }
+    g_spectrum = &spectrum;
+    g_spectrum_meter_pos = 0;
+    g_spectrum_mode_prev = g_spectrum_mode;
+  }
+
   // describe flac attributes
-  if (first_play || pic_brightness > 0) {
+  if (first_play || pic_brightness > 0 || spectrum_analyzer) {
 
     static uint8_t mes[256];
 
@@ -574,7 +803,7 @@ try:
 
       // decode flac stream into pcm data buffer as much as possible with resampling
       size_t decoded_bytes;
-      if (flac_decode_resample(&flac_decoder, ct->buffer, CHAIN_TABLE_BUFFER_BYTES, 15625, &decoded_bytes) != 0) {
+      if (flac_decode_resample(&flac_decoder, ct->buffer, CHAIN_TABLE_BUFFER_BYTES, 15625, &decoded_bytes, spectrum_analyzer ? &spectrum : NULL) != 0) {
         strcpy(error_mes, cp932rsc_flac_decode_error);
         goto catch;      
       }
@@ -673,17 +902,9 @@ try:
 
       // decode flac stream into pcm data buffer as much as possible
       size_t decoded_bytes;
-      if (flac_decoder.sample_rate <= 48000) {
-        if (flac_decode_full(&flac_decoder, ct->buffer, buffer_bytes, &decoded_bytes) != 0) {
-          strcpy(error_mes, cp932rsc_flac_decode_error);
-          goto catch;      
-        }
-      } else {
-        if (flac_decode_full(&flac_decoder, ct->buffer, buffer_bytes, &decoded_bytes) != 0) {
-//        if (flac_decode_half(&flac_decoder, ct->buffer, buffer_bytes, &decoded_bytes) != 0) {
-          strcpy(error_mes, cp932rsc_flac_decode_error);
-          goto catch;      
-        }        
+      if (flac_decode_full(&flac_decoder, ct->buffer, buffer_bytes, &decoded_bytes, spectrum_analyzer ? &spectrum : NULL) != 0) {
+        strcpy(error_mes, cp932rsc_flac_decode_error);
+        goto catch;      
       }
 
       // end of flac?
@@ -779,17 +1000,26 @@ try:
   // make sure playback start
   if (playback_driver == DRIVER_PCM8A) {
     while (pcm8a_get_data_length(0) == 0) {
-      usleep(50000);
+      usleep(10000);
     }
   } else if (playback_driver == DRIVER_PCM8PP) {
     while (pcm8pp_get_data_length(0) == 0) {
-      usleep(50000);
-    }    
+      usleep(10000);
+    }
   }
 
   int32_t block_counter_ofs = 0;
   int32_t buffer_delta = num_buffers;
 
+  if (spectrum_analyzer) {
+    _iocs_b_bpoke((uint8_t*)0xe88019,0x00);  // stop Timer-A  
+    _iocs_b_bpoke((uint8_t*)0xe8801f,0x08);  // set Timer-A counter (dummy small value for short interval)        
+    _iocs_b_bpoke((uint8_t*)0xe88019,0x18);  // start Timer-A
+    if (_iocs_vdispst((uint8_t*)refresh_spectrum_analyzer, 0, spectrum_interrupt_interval) != 0) {
+      strcpy(error_mes, cp932rsc_vsync_interrupt_error);
+      goto catch;
+    }
+  }
 
   if (playback_driver == DRIVER_PCM8A) {
 
@@ -803,11 +1033,27 @@ try:
           rc = 1;
           break;
         } else if (scan_code == KEY_SCAN_CODE_SPACE) {
-          pcm8a_resume();
-          paused = 0;
-        } else {
-          pcm8a_pause();
-          paused = 1;
+          if (paused) {
+            pcm8a_resume();
+            if (spectrum_analyzer) {
+              _iocs_vdispst((uint8_t*)refresh_spectrum_analyzer, 0, spectrum_interrupt_interval);
+            }
+            paused = 0;
+          } else {
+            pcm8a_pause();
+            if (spectrum_analyzer) {
+              _iocs_vdispst(NULL, 0, 0);
+            }
+            paused = 1;
+          }
+        } else if (scan_code == KEY_SCAN_CODE_A) {
+          if (spectrum_analyzer) {
+            if (_iocs_b_sftsns() & 0x01) {
+              g_spectrum_mode = (g_spectrum_mode + NUM_SPECTRUM_MODES - 1) % NUM_SPECTRUM_MODES;
+            } else {
+              g_spectrum_mode = (g_spectrum_mode + 1) % NUM_SPECTRUM_MODES;
+            }
+          }
         }
       }
 
@@ -821,13 +1067,16 @@ try:
           } else {
             // in case playback is stopped but not reached to the end, buffer underrun is observed.
             _iocs_b_print(cp932rsc_buffer_underrun);
+            if (spectrum_analyzer) {
+              _iocs_vdispst(NULL, 0, 0);
+            }
           }
         }
       }
 
       // already finishing decoding?
       if (end_flag) {
-        usleep(500000);
+        usleep(100000);
         continue;
       }
 
@@ -887,7 +1136,7 @@ try:
       int32_t dt = num_chains - block_counter;
       if (dt >= num_buffers * 4) {
         //_iocs_b_print(cp932rsc_progress_wait);
-        usleep(200000);
+        usleep(50000);
         continue;   // too fast decoding
       }
 
@@ -915,7 +1164,7 @@ try:
 
       // decode flac stream into pcm buffer
       size_t decoded_bytes;
-      if (flac_decode_resample(&flac_decoder, ct->buffer, CHAIN_TABLE_BUFFER_BYTES, 15625, &decoded_bytes) != 0) {
+      if (flac_decode_resample(&flac_decoder, ct->buffer, CHAIN_TABLE_BUFFER_BYTES, 15625, &decoded_bytes, spectrum_analyzer ? &spectrum : NULL) != 0) {
         strcpy(error_mes, cp932rsc_flac_decode_error);
         goto catch;      
       }
@@ -961,6 +1210,9 @@ try:
           if (resume_chain_table != NULL) {  
             pcm8a_play_linked_array_chain(0, pcm8a_channel_mode, resume_chain_table);
             buffer_delta = num_chains - block_counter;
+            if (spectrum_analyzer) {
+              _iocs_vdispst((uint8_t*)refresh_spectrum_analyzer, 0, spectrum_interrupt_interval);
+            }
           }
         }
       }
@@ -979,11 +1231,27 @@ try:
           rc = 1;
           break;
         } else if (scan_code == KEY_SCAN_CODE_SPACE) {
-          pcm8pp_resume();
-          paused = 0;
-        } else {
-          pcm8pp_pause();
-          paused = 1;
+          if (paused) {
+            pcm8pp_resume();
+            if (spectrum_analyzer) {
+              _iocs_vdispst((uint8_t*)refresh_spectrum_analyzer, 0, spectrum_interrupt_interval);
+            }
+            paused = 0;
+          } else {
+            pcm8pp_pause();
+            if (spectrum_analyzer) {
+              _iocs_vdispst(NULL, 0, 0);
+            }
+            paused = 1;
+          }
+        } else if (scan_code == KEY_SCAN_CODE_A) {
+          if (spectrum_analyzer) {
+            if (_iocs_b_sftsns() & 0x01) {
+              g_spectrum_mode = (g_spectrum_mode + NUM_SPECTRUM_MODES - 1) % NUM_SPECTRUM_MODES;
+            } else {
+              g_spectrum_mode = (g_spectrum_mode + 1) % NUM_SPECTRUM_MODES;
+            }
+          }
         }
       }
 
@@ -997,13 +1265,16 @@ try:
           } else {
             // in case playback is stopped but not reached to the end, buffer underrun is observed.
             _iocs_b_print(cp932rsc_buffer_underrun);
+            if (spectrum_analyzer) {
+              _iocs_vdispst(NULL, 0, 0);
+            }
           }
         }
       }
 
       // already finishing decoding?
       if (end_flag) {
-        usleep(500000);
+        usleep(100000);
         continue;
       }
 
@@ -1053,7 +1324,7 @@ try:
       if (dt > num_buffers * 4) {
         //_iocs_b_print(cp932rsc_progress_wait);
         //printf("dt=%d,num_chains=%d,block_counter_ofs=%d,block_counter=%d,num_buffers=%d\n",dt,num_chains,block_counter_ofs,block_counter,num_buffers);
-        usleep(200000);
+        usleep(50000);
         continue;  // too fast decoding
       }
 
@@ -1082,16 +1353,9 @@ try:
 
       // decode flac stream into pcm buffer
       size_t decoded_bytes;
-      if (flac_decoder.sample_rate <= 48000) {
-        if (flac_decode_full(&flac_decoder, ct->buffer, buffer_bytes, &decoded_bytes) != 0) {
-          strcpy(error_mes, cp932rsc_flac_decode_error);
-          goto catch;      
-        }
-      } else {
-        if (flac_decode_full(&flac_decoder, ct->buffer, buffer_bytes, &decoded_bytes) != 0) {
-          strcpy(error_mes, cp932rsc_flac_decode_error);
-          goto catch;      
-        }          
+      if (flac_decode_full(&flac_decoder, ct->buffer, buffer_bytes, &decoded_bytes, spectrum_analyzer ? &spectrum : NULL) != 0) {
+        strcpy(error_mes, cp932rsc_flac_decode_error);
+        goto catch;      
       }
 
       // end of flac?
@@ -1145,6 +1409,9 @@ try:
             pcm8pp_play_ex_linked_array_chain(0, pcm8pp_channel_mode, 1, pcm_freq * 256, resume_chain_table);
             block_counter_ofs = block_counter;
             buffer_delta = num_chains - (block_counter_ofs + pcm8pp_get_block_counter(0));
+            if (spectrum_analyzer) {
+              _iocs_vdispst((uint8_t*)refresh_spectrum_analyzer, 0, spectrum_interrupt_interval);
+            }
           }
         }
       }
@@ -1185,6 +1452,12 @@ catch:
   if (fread_buffer != NULL) {
     himem_free(fread_buffer);
     fread_buffer = NULL;
+  }
+
+  // close spectrum analyzer
+  if (spectrum_analyzer) {
+    _iocs_vdispst(NULL, 0, 0);
+    spectrum_close(&spectrum);
   }
 
   // close flac decoder

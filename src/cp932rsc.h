@@ -14,6 +14,8 @@ extern const uint8_t cp932rsc_pcm8_not_available[];
 extern const uint8_t cp932rsc_pcm8pp_not_available[];
 extern const uint8_t cp932rsc_himem_shortage[];
 extern const uint8_t cp932rsc_mainmem_shortage[];
+extern const uint8_t cp932rsc_spectrum_analyzer_init_error[];
+extern const uint8_t cp932rsc_vsync_interrupt_error[];
 extern const uint8_t cp932rsc_flac_decoder_init_error[];
 extern const uint8_t cp932rsc_flac_decoder_setup_error[];
 extern const uint8_t cp932rsc_flac_bps_error[];
