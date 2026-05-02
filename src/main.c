@@ -70,6 +70,49 @@ volatile static int16_t g_spectrum_mode = 0;
 volatile static int16_t g_spectrum_mode_prev = 0;
 
 //
+//  spectrum analyzer freq labels
+//
+// 100Hz (0-15列)
+static uint16_t band_label_100[] = {
+  0x0000, 0x3770, 0x1550, 0x1550, 0x1550, 0x1770, 0x0000, 0x0000
+};
+
+// 250Hz (16-31列)
+static uint16_t band_label_250[] = {
+  0x0000, 0x3bb8, 0x0a28, 0x3ba8, 0x20a8, 0x3bb8, 0x0000, 0x0000
+};
+
+// 500Hz (32-47列)
+static uint16_t band_label_500[] = {
+  0x0000, 0x3bb8, 0x22b8, 0x3aa8, 0x0aa8, 0x3bb8, 0x0000, 0x0000
+};
+
+// 1KHz (48-63列)
+static uint16_t band_label_1k[] = {
+  0x0000, 0x3480, 0x1500, 0x1600, 0x1500, 0x1480, 0x0000, 0x0000
+};
+
+// 2KHz (64-79列)
+static uint16_t band_label_2k[] = {
+  0x0000, 0x3a40, 0x0a80, 0x3b00, 0x2280, 0x3a40, 0x0000, 0x0000
+};
+
+// 4KHz (80-95列)
+static uint16_t band_label_4k[] = {
+  0x0000, 0x2a40, 0x2a80, 0x3b00, 0x0a80, 0x0a40, 0x0000, 0x0000
+};
+
+// 8KHz (96-111列)
+static uint16_t band_label_8k[] = {
+  0x0000, 0x3a40, 0x2a80, 0x3b00, 0x2a80, 0x3a40, 0x0000, 0x0000
+};
+
+static uint16_t* g_band_labels[] = {
+  band_label_100, band_label_250, band_label_500, 
+  band_label_1k,  band_label_2k,  band_label_4k,  band_label_8k
+};
+
+//
 //  abort vector handler
 //
 static __attribute__((interrupt)) void abort_application() {
@@ -187,7 +230,7 @@ static void show_help_message() {
   printf("     -t<n> ... album art display brightness (1-100, default:off)\n");
   printf("     -b<n> ... buffer size [x 64KB] (3-32,default:%d)\n", DEFAULT_BUFFERS);
   printf("     -f    ... full disk read mode (default:continuous disk read)\n");
-  printf("     -a[n] ... spectrum analyzer mode (0-%d,default:0)\n", NUM_SPECTRUM_MODES-1);
+  printf("     -a[n] ... spectrum analyzer mode (0-%d,default:6)\n", NUM_SPECTRUM_MODES-1);
   printf("     -n    ... no progress bar\n");
   printf("     -s    ... use main memory for file reading (SCSI disk)\n");
   printf("     -h    ... show help message\n");
@@ -197,9 +240,10 @@ static void show_help_message() {
 //  global spectrum analyzer handle
 //
 //   g_spectrum_mode:
-//    bit0: main color - 0:cyan 1:yellow
+//    bit0: bar color - 0:cyan 1:yellow
 //    bit1: L-band reverse - 0:normal 1:re
 //    bit2: peak hold - 0:no 1:yes
+//    bit3: band label - 0:no 1:yes
 //
 static void __attribute__((interrupt)) refresh_spectrum_analyzer() {
 
@@ -214,8 +258,14 @@ static void __attribute__((interrupt)) refresh_spectrum_analyzer() {
       int16_t ofsL = 10;
       int16_t ofsR = 25;
       for (int16_t b = 0; b < NUM_BANDS; b++) {
-        uint16_t* pL = &(((uint16_t*)(p ? 0xe20000 : 0xe00000))[0x80 * SPECTRUM_BASE_YPOS + ofsL]);
-        uint16_t* pR = &(((uint16_t*)(p ? 0xe20000 : 0xe00000))[0x80 * SPECTRUM_BASE_YPOS + ofsR]);
+        uint16_t* pL = &(((uint16_t*)(p ? 0xe20000 : 0xe00000))[0x80 * SPECTRUM_BASE_YPOS + 0x40 * 6 + ofsL]);
+        uint16_t* pR = &(((uint16_t*)(p ? 0xe20000 : 0xe00000))[0x80 * SPECTRUM_BASE_YPOS + 0x40 * 6 + ofsR]);
+        for (int16_t m = 0; m < 6; m++) {
+          *pL = 0x0000;  
+          *pR = 0x0000;
+          pL -= 0x40;   
+          pR -= 0x40;
+        }
         for (int16_t m = 0; m <= SPECTRUM_SCALE; m++) {
           *pL = 0x0000;  
           *pR = 0x0000;
@@ -254,6 +304,12 @@ static void __attribute__((interrupt)) refresh_spectrum_analyzer() {
         TVRAM1[0x80 * (SPECTRUM_BASE_YPOS - vp->meter_L[b]) + ofsL] = 0xffff;
         TVRAM1[0x80 * (SPECTRUM_BASE_YPOS - vp->meter_R[b]) + ofsR] = 0xffff;
       }
+      if (g_spectrum_mode & 8) { // band label
+        for (int16_t i = 0; i < 6; i++) {
+          TVRAM0[0x80 * SPECTRUM_BASE_YPOS + 0x40 * i + ofsL] = g_band_labels[b][i];
+          TVRAM0[0x80 * SPECTRUM_BASE_YPOS + 0x40 * i + ofsR] = g_band_labels[b][i];
+        }
+      }
     }
     return;
   }
@@ -291,7 +347,7 @@ static void __attribute__((interrupt)) refresh_spectrum_analyzer() {
       }
     }      
   }
-
+  
   if (g_spectrum_mode & 4) { // peak hold
     METER_VALUE* vp0 = &g_spectrum->meter_peak_values[g_spectrum_meter_pos-2];
     for (int16_t b = 0; b < NUM_BANDS; b++) {
@@ -302,10 +358,12 @@ static void __attribute__((interrupt)) refresh_spectrum_analyzer() {
       int16_t ofsL = g_spectrum_mode & 2 ? 22 - b * 2 : 10 + b * 2;
       int16_t ofsR = 25 + b * 2;
       if (meter_value_L != meter_value_L0) {
+        // 通常の差分描画
         TVRAM1[0x80 * (240 - meter_value_L0) + ofsL] = 0x0000;
         TVRAM1[0x80 * (240 - meter_value_L)  + ofsL] = 0xffff;
       }
       if (meter_value_R != meter_value_R0) {
+        // 通常の差分描画
         TVRAM1[0x80 * (240 - meter_value_R0) + ofsR] = 0x0000;
         TVRAM1[0x80 * (240 - meter_value_R)  + ofsR] = 0xffff;
       }
@@ -390,7 +448,7 @@ int32_t main(int32_t argc_, uint8_t* argv_[]) {
       } else if (argv[i][1] == 'a') {
         spectrum_analyzer = 1;
         if (strlen(argv[i]) == 2) {
-          g_spectrum_mode = 0;   // default spectrum analyzer mode
+          g_spectrum_mode = 6;   // default spectrum analyzer mode
         } else {
           g_spectrum_mode = atoi(argv[i]+2);
           if (g_spectrum_mode < 0 || g_spectrum_mode >= NUM_SPECTRUM_MODES) {
@@ -954,7 +1012,9 @@ try:
   int32_t buffer_delta = num_buffers;
 
   if (spectrum_analyzer) {
-    _iocs_b_bpoke((uint8_t*)0xe88019,0x18);  // reset Timer-A counter
+    _iocs_b_bpoke((uint8_t*)0xe88019,0x00);  // stop Timer-A  
+    _iocs_b_bpoke((uint8_t*)0xe8801f,0x08);  // set Timer-A counter (dummy small value for short interval)        
+    _iocs_b_bpoke((uint8_t*)0xe88019,0x18);  // start Timer-A
     if (_iocs_vdispst((uint8_t*)refresh_spectrum_analyzer, 0, spectrum_interrupt_interval) != 0) {
       strcpy(error_mes, cp932rsc_vsync_interrupt_error);
       goto catch;
@@ -988,7 +1048,11 @@ try:
           }
         } else if (scan_code == KEY_SCAN_CODE_A) {
           if (spectrum_analyzer) {
-            g_spectrum_mode = (g_spectrum_mode + 1) % NUM_SPECTRUM_MODES;
+            if (_iocs_b_sftsns() & 0x01) {
+              g_spectrum_mode = (g_spectrum_mode + NUM_SPECTRUM_MODES - 1) % NUM_SPECTRUM_MODES;
+            } else {
+              g_spectrum_mode = (g_spectrum_mode + 1) % NUM_SPECTRUM_MODES;
+            }
           }
         }
       }
@@ -1182,7 +1246,11 @@ try:
           }
         } else if (scan_code == KEY_SCAN_CODE_A) {
           if (spectrum_analyzer) {
-            g_spectrum_mode = (g_spectrum_mode + 1) % NUM_SPECTRUM_MODES;
+            if (_iocs_b_sftsns() & 0x01) {
+              g_spectrum_mode = (g_spectrum_mode + NUM_SPECTRUM_MODES - 1) % NUM_SPECTRUM_MODES;
+            } else {
+              g_spectrum_mode = (g_spectrum_mode + 1) % NUM_SPECTRUM_MODES;
+            }
           }
         }
       }
