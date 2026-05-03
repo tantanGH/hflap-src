@@ -52,6 +52,7 @@ extern const uint8_t cp932rsc_now_playing[];
 extern const uint8_t cp932rsc_flac_file_name[];
 extern const uint8_t cp932rsc_flac_data_size[];
 extern const uint8_t cp932rsc_flac_data_format[];
+extern const uint8_t cp932rsc_flac_total_time[];
 
 extern const uint8_t cp932rsc_pcm_driver[];
 

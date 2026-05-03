@@ -50,6 +50,7 @@ const uint8_t cp932rsc_now_playing[] = "\r\nNow playing ... push [ESC]/[Q] key t
 const uint8_t cp932rsc_flac_file_name[]   = "File name      : %s\r\n";
 const uint8_t cp932rsc_flac_data_size[]   = "Data size      : %d [bytes]\r\n";
 const uint8_t cp932rsc_flac_data_format[] = "Data format    : %s\r\n";
+const uint8_t cp932rsc_flac_total_time[]  = "Total Time     : %02d:%02d\r\n";
 const uint8_t cp932rsc_pcm_driver[]       = "PCM driver     : %s (volume:%d)\r\n";
 const uint8_t cp932rsc_flac_title[]       = "FLAC title     : %s\r\n";
 const uint8_t cp932rsc_flac_artist[]      = "FLAC artist    : %s\r\n";

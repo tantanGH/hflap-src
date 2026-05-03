@@ -357,14 +357,10 @@ loop:
 
   // init crtc if album art is required
   if (pic_brightness > 0) {
-
     jpeg_crtmod_768x512_65536();  // 768x512,65536 color mode
-
     _dos_c_fnkmod(3);    // function key display off
     _dos_c_cls_al();
-
     jpeg_fill_text_masks();
-
   }
 
   if (spectrum_analyzer) {
@@ -404,16 +400,44 @@ try:
     goto catch;
   }
 
-  // get skip offset (skip ID3 tag)
-  int32_t skip_offset = flac_decode_get_skip_offset(&flac_decoder, fd);
-  if (skip_offset < 0) {
-    strcpy(error_mes, cp932rsc_file_open_error);
-    goto catch;    
+  // get stream information
+  if (flac_decode_get_stream_info(&flac_decoder, fd) != 0) {
+    strcpy(error_mes, cp932rsc_not_flac_file);
+    goto catch;
+  }
+
+  // check bps
+  if (flac_decoder.bps != 16 && flac_decoder.bps != 24) {
+    strcpy(error_mes, cp932rsc_flac_bps_error);
+    goto catch;
+  }
+
+  // check frequency
+  if (flac_decoder.sample_rate != 44100 && flac_decoder.sample_rate != 48000 &&
+      flac_decoder.sample_rate != 88200 && flac_decoder.sample_rate != 96000) {
+    strcpy(error_mes, cp932rsc_flac_freq_error);
+    goto catch;
+  }
+
+  // check channels
+  if (flac_decoder.channels != 2) {
+    strcpy(error_mes, cp932rsc_flac_channel_error);
+    goto catch;
+  }
+
+  // parse tags and draw artwork
+  _iocs_b_print(cp932rsc_now_loading_picture);
+  if (flac_decode_parse_tags(&flac_decoder, fd, pic_brightness) != 0) {
+    strcpy(error_mes, cp932rsc_not_flac_file);
+    goto catch;
   }
 
   // obtain data content size
+  uint32_t skip_offset = _dos_seek(fd, 0, 1);
   uint32_t flac_data_size = _dos_seek(fd, 0, 2) - skip_offset;
   _dos_seek(fd, skip_offset, 0);
+
+//  printf("skip_offset=%d\n",skip_offset);
 
   // allocate file read buffer
   // if continuous read mode is not enabled, allocate larger buffer for whole file content to reduce disk access frequency (note: it may cause out of memory error on large files)
@@ -423,6 +447,8 @@ try:
     strcpy(error_mes, cp932rsc_himem_shortage);
     goto catch;
   }
+
+//  printf("fread_buffer_len=%d\n",fread_buffer_len);
 
   // read flac file content into file read buffer
   if (!continuous_read) {
@@ -462,43 +488,18 @@ try:
   }
   _iocs_b_print(cp932rsc_erase_line);
 
-  // check eye catch
-  if (memcmp(fread_buffer, "fLaC", 4) != 0) {
-    strcpy(error_mes, cp932rsc_not_flac_file);
-    goto catch;
-  }
-
-  // setup flac decoder
-  _iocs_b_print(cp932rsc_now_loading_picture);
-  if (flac_decode_setup(&flac_decoder, fread_buffer, flac_data_size, continuous_read ? fread_buffer_len : 0, pic_brightness, 0) != 0) {
-    strcpy(error_mes, cp932rsc_flac_decoder_setup_error);
-    goto catch;
-  }
-  _iocs_b_print(cp932rsc_erase_line);
-
   // adjust scroll position
   if (pic_brightness > 0) {
     jpeg_open_text_masks();
   }
 
-  // check bps
-  if (flac_decoder.bps != 16 && flac_decoder.bps != 24) {
-    strcpy(error_mes, cp932rsc_flac_bps_error);
-    goto catch;
-  }
+  //printf("%02X %02X\n", ((uint8_t*)fread_buffer)[0], ((uint8_t*)fread_buffer)[1]);
 
-  // check frequency
-  if (flac_decoder.sample_rate != 44100 && flac_decoder.sample_rate != 48000 &&
-      flac_decoder.sample_rate != 88200 && flac_decoder.sample_rate != 96000) {
-    strcpy(error_mes, cp932rsc_flac_freq_error);
+  if (flac_decode_setup(&flac_decoder, fread_buffer, flac_data_size, continuous_read ? fread_buffer_len : 0) != 0) {
+    strcpy(error_mes, cp932rsc_flac_decoder_setup_error);
     goto catch;
   }
-
-  // check channels
-  if (flac_decoder.channels != 2) {
-    strcpy(error_mes, cp932rsc_flac_channel_error);
-    goto catch;
-  }
+  _iocs_b_print(cp932rsc_erase_line);
 
   // initialize spectrum analyzer if spectrum analyzer mode is enabled
   if (spectrum_analyzer) {
@@ -534,6 +535,9 @@ try:
               playback_volume);
     _iocs_b_print(mes);
 
+    uint32_t total_time_sec = flac_decoder.num_samples / flac_decoder.sample_rate;
+    sprintf(mes, cp932rsc_flac_total_time, total_time_sec / 60, total_time_sec % 60);
+    _iocs_b_print(mes);
     sprintf(mes, cp932rsc_flac_frequency, flac_decoder.sample_rate);
     _iocs_b_print(mes);
     sprintf(mes, cp932rsc_flac_channels, flac_decoder.channels == 1 ? "mono" : "stereo");

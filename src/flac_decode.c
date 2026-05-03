@@ -78,70 +78,254 @@ void flac_decode_close(FLAC_DECODE_HANDLE* decode) {
   }
 
   if (decode->tag_vendor != NULL) {
-    himem_free(decode->tag_vendor);
+    free(decode->tag_vendor);
     decode->tag_vendor = NULL;
   }
   if (decode->tag_title != NULL) {
-    himem_free(decode->tag_title);
+    free(decode->tag_title);
     decode->tag_title = NULL;
   }
   if (decode->tag_artist != NULL) {
-    himem_free(decode->tag_artist);
+    free(decode->tag_artist);
     decode->tag_artist = NULL;
   }
   if (decode->tag_album != NULL) {
-    himem_free(decode->tag_album);
+    free(decode->tag_album);
     decode->tag_album = NULL;
   }
 
 }
 
 //
-//  get skip offset (skip ID3v2 tags)
+//  get stream info
 //
-int32_t flac_decode_get_skip_offset(FLAC_DECODE_HANDLE* decode, int32_t fd) {
+int32_t flac_decode_get_stream_info(FLAC_DECODE_HANDLE* decode, int32_t fd) {
 
-  // read the first 10 bytes of the FLAC file
-  uint8_t flac_header[10];
-  size_t ret = _dos_read(fd, flac_header, 10);
+  int32_t rc = -1;
+
+  if (decode == NULL) goto exit;
+
+  // ID3v2タグの読み飛ばし(もしあれば)
+  uint8_t id3_header[10];
+  size_t ret = _dos_read(fd, id3_header, 10);
   if (ret != 10) {
     return -1;
   }
 
-  // check if the file has an ID3v2 tag
-  if (!(flac_header[0] == 'I' && flac_header[1] == 'D' && flac_header[2] == '3')) {
-    return 0;
+  // ID3v2マジックナンバー確認
+  if (!(id3_header[0] == 'I' && id3_header[1] == 'D' && id3_header[2] == '3')) {
+
+    // ID3がない場合はファイルの先頭(0)から読み直し
+    _dos_seek(fd, 0, 0); 
+
+  } else {
+
+    // ID3v2のタグサイズ計算 (Syncsafe Integer)
+    // このサイズは「ヘッダの10バイトを含まない」サイズであることに注意
+    uint32_t body_size = ((uint32_t)(id3_header[6] & 0x7f) << 21) |
+                         ((uint32_t)(id3_header[7] & 0x7f) << 14) |
+                         ((uint32_t)(id3_header[8] & 0x7f) << 7)  |
+                         ((uint32_t)(id3_header[9] & 0x7f));
+
+    // フッター(Footer)の有無を確認 (Bit 4 of flags)
+    // ID3v2.4などで末尾にフッターがある場合はさらに10バイト存在する
+    uint32_t footer_size = (id3_header[5] & 0x10) ? 10 : 0;
+
+    // 結論：スキップすべきサイズは「ヘッダ(10) + ボディ(body_size) + フッター(footer_size)」
+    // 拡張ヘッダ等はbody_sizeの中に含まれているため、個別にシークして解析する必要はない
+    _dos_seek(fd, body_size + footer_size, 1);
+
   }
 
-  // extract the total tag size (syncsafe integer)
-  uint32_t total_tag_size = ((flac_header[6] & 0x7f) << 21) | ((flac_header[7] & 0x7f) << 14) |
-                            ((flac_header[8] & 0x7f) << 7)  | (flac_header[9] & 0x7f);
+  // FLAC先頭のアイキャッチおよびSTREAMINFOの読み込み
+  uint8_t flac_header[FLAC_STREAMINFO_SIZE];
+  size_t flac_header_len = sizeof(flac_header);
+  if (_dos_read(fd, flac_header, flac_header_len) != flac_header_len) goto exit;
+  if (memcmp(flac_header, "fLaC", 4) != 0) goto exit;
 
-  // ID3v2 version
-  int16_t id3v2_version = flac_header[3];
-  if (id3v2_version < 0x03) {
-    return total_tag_size + 10;     // does not support ID3v2.2 or before
+  // obtain stream information
+  uint32_t used_bytes = flac_header_len;
+  uint32_t decoded_len = 0;
+  fx_flac_state_t state = fx_flac_process(decode->fx_flac, flac_header, &used_bytes, NULL, &decoded_len);
+  if (state == FLAC_ERR) goto exit;
+  decode->sample_rate = fx_flac_get_streaminfo(decode->fx_flac, FLAC_KEY_SAMPLE_RATE);
+  decode->channels = fx_flac_get_streaminfo(decode->fx_flac, FLAC_KEY_N_CHANNELS);
+  decode->bps = fx_flac_get_streaminfo(decode->fx_flac, FLAC_KEY_SAMPLE_SIZE);
+  decode->num_samples = fx_flac_get_streaminfo(decode->fx_flac, FLAC_KEY_N_SAMPLES);
+  rc = 0;
+
+exit:
+  return rc;
+}
+
+//
+//  parse tags
+//
+int32_t flac_decode_parse_tags(FLAC_DECODE_HANDLE* decode, int32_t fd, int16_t brightness) {
+
+  int32_t rc = -1;
+  uint8_t* tag_body = NULL;
+  uint8_t* tag_body_himem = NULL;
+
+  for (;;) {
+
+    uint8_t tag_header[4];
+    if (_dos_read(fd, tag_header, 4) != 4) goto exit;
+
+    uint8_t tag_type = tag_header[0];
+    size_t tag_size = (tag_header[1] << 16) + (tag_header[2] << 8) + tag_header[3];
+
+    if ((tag_type & 0x7f) == 4) {
+
+      // タグボディ読み込み(メインメモリ)
+      tag_body = malloc(tag_size);
+      if (tag_body == NULL) goto exit;
+
+      size_t read_size = 0;
+      do {
+        size_t len = _dos_read(fd, tag_body + read_size, tag_size - read_size);
+        if (len == 0) break;
+        read_size += len;
+      } while (read_size < tag_size);
+
+      size_t ofs = 0;
+
+      // VORBIS_COMMENT
+      uint32_t vendor_comment_size = tag_body[ofs] + (tag_body[ofs+1] << 8) + (tag_body[ofs+2] << 16) + (tag_body[ofs+3] << 24);
+      ofs += 4;
+
+      decode->tag_vendor = malloc(vendor_comment_size * 2);   // 念の為多めに
+      utf8_to_cp932(decode->tag_vendor, vendor_comment_size * 2, tag_body + ofs, vendor_comment_size);
+      ofs += vendor_comment_size;
+
+      uint32_t num_comments = tag_body[ofs] + (tag_body[ofs+1] << 8) + (tag_body[ofs+2] << 16) + (tag_body[ofs+3] << 24);
+      ofs += 4;
+
+      for (uint32_t i = 0; i < num_comments; i++) {
+
+        uint8_t tag_key[32];
+        size_t comment_size = tag_body[ofs] + (tag_body[ofs+1] << 8) + (tag_body[ofs+2] << 16) + (tag_body[ofs+3] << 24);
+        ofs += 4;
+
+        for (uint32_t j = 0; j < comment_size && j < 31; j++) {
+          if (tag_body[ofs + j] != '=') continue;
+          int16_t epos = j;
+          memcpy(tag_key, tag_body + ofs, epos);
+          tag_key[epos] = '\0';
+          size_t value_size = comment_size - epos - 1;
+          if (value_size > 0) {
+            if (strcasecmp(tag_key, "ARTIST") == 0) {
+              if (decode->tag_artist != NULL) free(decode->tag_artist);
+              decode->tag_artist = malloc(value_size * 2 + 1);
+              utf8_to_cp932(decode->tag_artist, value_size * 2, tag_body + ofs + epos + 1, value_size);
+            } else if (strcasecmp(tag_key, "ALBUM") == 0) {
+              if (decode->tag_album != NULL) free(decode->tag_album);
+              decode->tag_album = malloc(value_size * 2 + 1);
+              utf8_to_cp932(decode->tag_album, value_size * 2, tag_body + ofs + epos + 1, value_size);
+            } else if (strcasecmp(tag_key, "TITLE") == 0) {
+              if (decode->tag_title != NULL) free(decode->tag_title);
+              decode->tag_title = malloc(value_size * 2 + 1);
+              utf8_to_cp932(decode->tag_title, value_size * 2, tag_body + ofs + epos + 1, value_size);
+            }
+          }
+          break;
+        }
+
+        ofs += comment_size;
+
+      }
+
+      free(tag_body);
+      tag_body = NULL;
+
+    } else if (brightness > 0 && (tag_type & 0x7f) == 6) {
+
+      // PICTUREブロックのヘッダ（PictureType:4 + MIME_Len:4）をまず読む
+      uint8_t pic_head[8];
+      if (_dos_read(fd, pic_head, 8) != 8) goto exit;
+
+      uint32_t mime_type_size = (pic_head[4] << 24) | (pic_head[5] << 16) | (pic_head[6] << 8) | pic_head[7];
+
+      // MIMEタイプを判定
+      uint8_t mime_type[16];
+      size_t check_len = (mime_type_size < 15) ? mime_type_size : 15;
+      _dos_read(fd, mime_type, check_len);
+      mime_type[check_len] = '\0';
+
+      if (strcasecmp(mime_type, "image/jpeg") == 0) {
+
+        // 残りのMIME文字列を読み飛ばす
+        if (mime_type_size > check_len) _dos_seek(fd, mime_type_size - check_len, 1);
+
+        // Descriptionサイズ以降、画像データサイズ直前までを読み進める
+        uint8_t pic_info[28]; // DescLen:4 + Width:4 + Height:4 + Depth:4 + Colors:4 + DataLen:4
+        // 注意：Description文字列自体を飛ばす必要がある
+        uint8_t desc_len_buf[4];
+        _dos_read(fd, desc_len_buf, 4);
+        uint32_t desc_size = (desc_len_buf[0] << 24) | (desc_len_buf[1] << 16) | (desc_len_buf[2] << 8) | desc_len_buf[3];
+        _dos_seek(fd, desc_size, 1); // 説明文をスキップ
+
+        // 画像スペックとデータサイズを取得
+        _dos_read(fd, pic_info, 20); // Width, Height, Depth, Colors, DataLen
+        uint32_t picture_size = (pic_info[16] << 24) | (pic_info[17] << 16) | (pic_info[18] << 8) | pic_info[19];
+
+        // ここで初めて画像データ本体のためのメモリを確保
+        tag_body_himem = himem_malloc(picture_size);
+        if (tag_body_himem != NULL) {
+          _dos_read(fd, tag_body_himem, picture_size);          
+          if (picture_size > 2 && tag_body_himem[0] == 0xff && tag_body_himem[1] == 0xd8) {
+            JPEG jpg;
+            jpeg_open(&jpg, brightness);
+            jpeg_draw(&jpg, tag_body_himem, picture_size, 0);
+            jpeg_close(&jpg);
+          }
+          himem_free(tag_body_himem);
+          tag_body_himem = NULL;
+        } else {
+          _dos_seek(fd, picture_size, 1); // メモリ確保失敗時はスキップ
+        }
+      } else {
+        // JPEG以外（PNG等）なら、残りのブロックサイズを一括シークで飛ばす
+        // ここまでの既読分：8(pic_head) + mime_type_size
+        _dos_seek(fd, tag_size - (8 + mime_type_size), 1);
+      }
+    } else {
+
+      _dos_seek(fd, tag_size, 1);
+
+    }
+
+    if (tag_type & 0x80) {
+      // ダミーの「最後のメタデータブロック（空）」ヘッダ
+      // Bit 7(Last)=1, Type=0(StreamInfo), Length=0
+      uint8_t dummy_end_header[4] = { 0x84, 0x00, 0x00, 0x00 };
+      uint32_t used_bytes = 4;
+      uint32_t decoded_len = 0;
+      fx_flac_process(decode->fx_flac, dummy_end_header, &used_bytes, NULL, &decoded_len);
+      break;
+    }
   }
 
-  // skip extended ID3v2 header
-  if (flac_header[5] & (1<<6)) {
-    uint8_t ext_header[6];
-    _dos_read(fd, ext_header, 6);
-    uint32_t ext_header_size = id3v2_version == 0x03 ? *((uint32_t*)(ext_header + 0)) :
-                                ((ext_header[0] & 0x7f) << 21) | ((ext_header[1] & 0x7f) << 14) |
-                                ((ext_header[2] & 0x7f) << 7)  | (ext_header[3] & 0x7f);
-    _dos_seek(fd, ext_header_size, 1);
-    total_tag_size -= 6 + ext_header_size;
+  rc = 0;
+
+exit:
+
+  if (tag_body != NULL) {
+    free(tag_body);
+    tag_body = NULL;
+  }
+  if (tag_body_himem != NULL) {
+    himem_free(tag_body_himem);
+    tag_body_himem = NULL;
   }
 
-  return 10 + total_tag_size;
+  return rc;
 }
 
 //
 //  setup decode operation
 //
-int32_t flac_decode_setup(FLAC_DECODE_HANDLE* decode, void* flac_data, size_t flac_data_len, 
-                          size_t continuous_read_len, int16_t brightness, int16_t half_size) {
+int32_t flac_decode_setup(FLAC_DECODE_HANDLE* decode, void* flac_data, size_t flac_data_len, size_t continuous_read_len) {
 
   int32_t rc = -1;
 
@@ -155,194 +339,8 @@ int32_t flac_decode_setup(FLAC_DECODE_HANDLE* decode, void* flac_data, size_t fl
   decode->continuous_read_pos = 0;
 
   // reset sampling parameters
-  decode->sample_rate = -1;
-  decode->channels = -1;
-  decode->bps = -1;
-  decode->num_samples = 0;
   decode->resample_counter = 0;
   decode->pending_len = 0;
-
-  // obtain sampling parameters
-  fx_flac_state_t state;
-  do {
-    uint32_t used_bytes = decode->continuous_read_len > 0 ? decode->continuous_read_len - decode->flac_data_pos : decode->flac_data_len - decode->flac_data_pos;
-    uint32_t decoded_len = decode->samples_len;
-    state = fx_flac_process(decode->fx_flac, &(decode->flac_data[decode->flac_data_pos]), &used_bytes, decode->samples, &decoded_len);
-    if (state == FLAC_ERR) {
-      goto exit;
-    }
-    decode->flac_data_pos += used_bytes;
-    if (decode->continuous_read_len > 0) decode->continuous_read_pos += used_bytes;
-    //printf("setup pos %d\n", decode->flac_data_pos);
-    //printf("%d %d %d\n",state, used_bytes, decoded_len);
-  } while (state != FLAC_END_OF_METADATA);
-
-#ifdef __VERBOSE__
-  printf("state=%d,flac_data_pos=%d\n",state,decode->flac_data_pos);
-#endif
-
-  decode->sample_rate = fx_flac_get_streaminfo(decode->fx_flac, FLAC_KEY_SAMPLE_RATE);
-  decode->channels = fx_flac_get_streaminfo(decode->fx_flac, FLAC_KEY_N_CHANNELS);
-  decode->bps = fx_flac_get_streaminfo(decode->fx_flac, FLAC_KEY_SAMPLE_SIZE);
-  decode->num_samples = fx_flac_get_streaminfo(decode->fx_flac, FLAC_KEY_N_SAMPLES);
-
-#ifdef __VERBOSE__
-  printf("%d,%d,%d,%d\n",decode->sample_rate,decode->channels,decode->bps,decode->num_samples);
-#endif
-
-  // obtain tags
-  size_t tag_ofs = 4;
-
-  for (;;) {
-
-    uint8_t meta_type = decode->flac_data[tag_ofs];
-    size_t meta_size = (decode->flac_data[tag_ofs+1] << 16) + (decode->flac_data[tag_ofs+2] << 8) + decode->flac_data[tag_ofs+3];
-
-    tag_ofs += 4;
-
-    if ((meta_type & 0x7f) == 4) {
-
-      // VORBIS_COMMENT
-#ifdef __VERBOSE__
-      printf("VORBIS_COMMENT\n");
-#endif
-      size_t vendor_comment_size = decode->flac_data[tag_ofs] + 
-                                   (decode->flac_data[tag_ofs+1] << 8) +
-                                   (decode->flac_data[tag_ofs+2] << 16) +
-                                   (decode->flac_data[tag_ofs+3] << 24);
-
-      tag_ofs += 4;
-
-      decode->tag_vendor = himem_malloc(vendor_comment_size * 2);
-      utf8_to_cp932(decode->tag_vendor, vendor_comment_size * 2, &(decode->flac_data[tag_ofs]), vendor_comment_size);
-      
-      tag_ofs += vendor_comment_size;
-
-      size_t num_comments = decode->flac_data[tag_ofs] + 
-                            (decode->flac_data[tag_ofs+1] << 8) +
-                            (decode->flac_data[tag_ofs+2] << 16) +
-                            (decode->flac_data[tag_ofs+3] << 24);
-
-      tag_ofs += 4;
-
-      for (int16_t i = 0; i < num_comments; i++) {
-
-        uint8_t tag_key[] = "                ";
-
-        size_t comment_size = decode->flac_data[tag_ofs] + 
-                              (decode->flac_data[tag_ofs+1] << 8) +
-                              (decode->flac_data[tag_ofs+2] << 16) +
-                              (decode->flac_data[tag_ofs+3] << 24);
-
-        tag_ofs += 4;
-
-        for (int16_t j = 0; j < comment_size && j < 16; j++) {
-          if (decode->flac_data[tag_ofs + j] != '=') continue;
-          int16_t epos = j;
-          memcpy(tag_key, &(decode->flac_data[tag_ofs]), epos);
-          tag_key[epos] = '\0';
-          size_t value_size = comment_size - epos - 1;
-          //printf("tag_key=[%s], epos=%d, comment_size=%d, value_size=%d\n", tag_key, epos, comment_size, value_size);
-          if (value_size > 0) {
-            if (strcasecmp(tag_key, "ARTIST") == 0) {
-              decode->tag_artist = himem_malloc(value_size * 2);
-              utf8_to_cp932(decode->tag_artist, value_size * 2, &(decode->flac_data[tag_ofs + epos + 1]), value_size);
-            } else if (strcasecmp(tag_key, "ALBUM") == 0) {
-              decode->tag_album = himem_malloc(value_size * 2);
-              utf8_to_cp932(decode->tag_album, value_size * 2, &(decode->flac_data[tag_ofs + epos + 1]), value_size);
-            } else if (strcasecmp(tag_key, "TITLE") == 0) {
-              decode->tag_title = himem_malloc(value_size * 2);
-              utf8_to_cp932(decode->tag_title, value_size * 2, &(decode->flac_data[tag_ofs + epos + 1]), value_size);
-            }
-          }
-          break;
-        }
-
-        tag_ofs += comment_size;
-
-      }
-
-    } else if (brightness > 0 && (meta_type & 0x7f) == 6) {
-
-      // PICTURE
-#ifdef __VERBOSE__
-      printf("PICTURE\n");
-#endif
-      uint32_t picture_type = (decode->flac_data[tag_ofs] << 24) + 
-                              (decode->flac_data[tag_ofs+1] << 16) +
-                              (decode->flac_data[tag_ofs+2] << 8) +
-                               decode->flac_data[tag_ofs+3];
-
-      tag_ofs += 4;
-
-      size_t mime_type_size = (decode->flac_data[tag_ofs] << 24) + 
-                              (decode->flac_data[tag_ofs+1] << 16) +
-                              (decode->flac_data[tag_ofs+2] << 8) +
-                               decode->flac_data[tag_ofs+3];
-
-      tag_ofs += 4;
-
-      if (mime_type_size >= 10 && memcmp("image/jpeg", &(decode->flac_data[tag_ofs]), 10) == 0) {
-
-        tag_ofs += mime_type_size;
-
-#ifdef __VERBOSE__
-        printf("mime_type_size=%d\n", mime_type_size);
-#endif
-        size_t picture_desc_size = (decode->flac_data[tag_ofs] << 24) + 
-                                   (decode->flac_data[tag_ofs+1] << 16) +
-                                   (decode->flac_data[tag_ofs+2] << 8) +
-                                    decode->flac_data[tag_ofs+3];
-#ifdef __VERBOSE__
-        printf("picture_desc_size=%d\n", picture_desc_size);
-#endif
-
-        tag_ofs += 4 + picture_desc_size + 4 + 4 + 4 + 4;
-
-        size_t picture_size = (decode->flac_data[tag_ofs] << 24) + 
-                              (decode->flac_data[tag_ofs+1] << 16) +
-                              (decode->flac_data[tag_ofs+2] << 8) +
-                               decode->flac_data[tag_ofs+3];
-
-#ifdef __VERBOSE__
-        printf("picture_size=%d\n", picture_size);
-#endif
-        tag_ofs += 4;
-
-        uint8_t* picture_data = &(decode->flac_data[tag_ofs]);
-        if (picture_size > 2 && picture_data[0] == 0xff && picture_data[1] == 0xd8) {
-          JPEG jpg;
-          jpeg_open(&jpg, brightness);
-          if (jpeg_draw(&jpg, picture_data, picture_size, 0) != 0) {  
-#ifdef __VERBOSE__
-            printf("unsupported jpeg artwork format. (progressive JPEG?)\n");
-#endif
-          }
-          jpeg_close(&jpg);
-        }
-
-        tag_ofs += picture_size;
-
-      } else {
-#ifdef __VERBOSE__
-        uint8_t mime[12];
-        memcpy(mime, &(decode->flac_data[tag_ofs]), 10);
-        mime[10] = '\0';
-        printf("unsupported mime type. (%s)\n");
-#endif
-        tag_ofs += meta_size - 8;
-
-      }
-
-    } else {
-
-      tag_ofs += meta_size;
-
-    }
-
-    if (meta_type & 0x80) break;
-
-  }
 
   rc = 0;
 
@@ -369,7 +367,6 @@ int32_t flac_decode_full(FLAC_DECODE_HANDLE* decode, int16_t* decode_buffer, siz
 
     uint32_t used_bytes = decode->continuous_read_len > 0 ? decode->continuous_read_len - decode->continuous_read_pos : decode->flac_data_len - decode->flac_data_pos;
     uint32_t sample_len = (decode_buffer_bytes / sizeof(int16_t)) - decode_ofs;
-      
     if (fx_flac_process(decode->fx_flac, 
                         &(decode->flac_data[decode->continuous_read_len > 0 ? decode->continuous_read_pos : decode->flac_data_pos]), 
                         &used_bytes, 

@@ -8,6 +8,8 @@
 #include <flac.h>
 #include "spectrum_stream.h"
 
+#define FLAC_STREAMINFO_SIZE  (42)
+
 typedef fx_flac_t FX_FLAC;
 
 typedef struct {
@@ -41,8 +43,9 @@ typedef struct {
 
 int32_t flac_decode_init(FLAC_DECODE_HANDLE* decode);
 void flac_decode_close(FLAC_DECODE_HANDLE* decode);
-int32_t flac_decode_get_skip_offset(FLAC_DECODE_HANDLE* decode, int32_t fd);
-int32_t flac_decode_setup(FLAC_DECODE_HANDLE* decode, void* flac_data, size_t flac_data_len, size_t continuous_read_len, int16_t brightness, int16_t half_size);
+int32_t flac_decode_get_stream_info(FLAC_DECODE_HANDLE* decode, int32_t fd);
+int32_t flac_decode_parse_tags(FLAC_DECODE_HANDLE* decode, int32_t fd, int16_t brightness);
+int32_t flac_decode_setup(FLAC_DECODE_HANDLE* decode, void* flac_data, size_t flac_data_len, size_t continuous_read_len);
 int32_t flac_decode_full(FLAC_DECODE_HANDLE* decode, int16_t* decode_buffer, size_t decode_buffer_bytes, size_t* decoded_bytes, SPECTRUM_STREAM_HANDLE* spectrum);
 int32_t flac_decode_resample(FLAC_DECODE_HANDLE* decode, int16_t* resample_buffer, size_t resample_buffer_bytes, int16_t resample_freq, size_t* resampled_bytes, SPECTRUM_STREAM_HANDLE* spectrum);
 
