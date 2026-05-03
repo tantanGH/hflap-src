@@ -353,7 +353,7 @@ exit:
 //
 //  decode flac stream
 //
-int32_t flac_decode_full(FLAC_DECODE_HANDLE* decode, int16_t* decode_buffer, size_t decode_buffer_bytes, size_t* decoded_bytes, SPECTRUM_HANDLE* spectrum) {
+int32_t flac_decode_full(FLAC_DECODE_HANDLE* decode, int16_t* decode_buffer, size_t decode_buffer_bytes, size_t* decoded_bytes, SPECTRUM_STREAM_HANDLE* spectrum) {
 
   // default return code
   int32_t rc = -1;
@@ -379,7 +379,7 @@ int32_t flac_decode_full(FLAC_DECODE_HANDLE* decode, int16_t* decode_buffer, siz
     decode->flac_data_pos += used_bytes;
 
     if (spectrum != NULL) {
-      spectrum_process(spectrum, &(decode_buffer[decode_ofs]), sample_len / decode->channels);
+      spectrum_stream_process(spectrum, &(decode_buffer[decode_ofs]), sample_len / decode->channels);
     }
 
     if (decode->continuous_read_len > 0) decode->continuous_read_pos += used_bytes;
@@ -413,7 +413,7 @@ exit:
 //
 //  decode flac stream with resampling
 //
-int32_t flac_decode_resample(FLAC_DECODE_HANDLE* decode, int16_t* decode_buffer, size_t decode_buffer_bytes, int16_t resample_freq, size_t* decoded_bytes, SPECTRUM_HANDLE* spectrum) {
+int32_t flac_decode_resample(FLAC_DECODE_HANDLE* decode, int16_t* decode_buffer, size_t decode_buffer_bytes, int16_t resample_freq, size_t* decoded_bytes, SPECTRUM_STREAM_HANDLE* spectrum) {
 
   // default return code
   int32_t rc = -1;
@@ -435,7 +435,7 @@ int32_t flac_decode_resample(FLAC_DECODE_HANDLE* decode, int16_t* decode_buffer,
     decode->flac_data_pos += used_bytes;
 
     if (spectrum != NULL) {
-      spectrum_process(spectrum, decode->samples, sample_len / decode->channels);
+      spectrum_stream_process(spectrum, decode->samples, sample_len / decode->channels);
     }
 
     if (decode->continuous_read_len > 0) decode->continuous_read_pos += used_bytes;
