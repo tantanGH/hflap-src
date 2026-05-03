@@ -22,3 +22,6 @@
 [submodule "libs/libcmdline"]
 	path = libs/libcmdline
 	url = https://github.com/tantanGH/libcmdline.git
+[submodule "libs/libspectrum"]
+	path = libs/libspectrum
+	url = https://github.com/tantanGH/libspectrum.git
