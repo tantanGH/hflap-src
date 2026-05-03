@@ -18,10 +18,6 @@
 #include <pcm8a.h>
 #include <pcm8pp.h>
 
-// spectrum analyzer
-#include <spectrum_stream.h>
-#include <spectrum_display.h>
-
 // devices
 #include "keyboard.h"
 
@@ -30,6 +26,10 @@
 
 // codec
 #include "flac_decode.h"
+
+// spectrum analyzer
+#include "spectrum_stream.h"
+#include "spectrum_display.h"
 
 // application
 #include "hflap.h"

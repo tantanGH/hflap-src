@@ -6,7 +6,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <flac.h>
-#include <spectrum_stream.h>
+#include "spectrum_stream.h"
 
 typedef fx_flac_t FX_FLAC;
 
