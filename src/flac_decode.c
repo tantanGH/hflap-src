@@ -165,7 +165,6 @@ int32_t flac_decode_parse_tags(FLAC_DECODE_HANDLE* decode, int32_t fd, int16_t b
 
   int32_t rc = -1;
   uint8_t* tag_body = NULL;
-  uint8_t* tag_body_himem = NULL;
 
   for (;;) {
 
@@ -270,17 +269,22 @@ int32_t flac_decode_parse_tags(FLAC_DECODE_HANDLE* decode, int32_t fd, int16_t b
         uint32_t picture_size = (pic_info[16] << 24) | (pic_info[17] << 16) | (pic_info[18] << 8) | pic_info[19];
 
         // ここで初めて画像データ本体のためのメモリを確保
-        tag_body_himem = himem_malloc(picture_size);
-        if (tag_body_himem != NULL) {
-          _dos_read(fd, tag_body_himem, picture_size);          
-          if (picture_size > 2 && tag_body_himem[0] == 0xff && tag_body_himem[1] == 0xd8) {
+        tag_body = malloc(picture_size);
+        if (tag_body != NULL) {
+          size_t read_size = 0;
+          do {
+            size_t len = _dos_read(fd, tag_body + read_size, picture_size - read_size);
+            if (len == 0) break;
+            read_size += len;
+          } while (read_size < picture_size);        
+          if (picture_size > 2 && tag_body[0] == 0xff && tag_body[1] == 0xd8) {
             JPEG jpg;
             jpeg_open(&jpg, brightness);
-            jpeg_draw(&jpg, tag_body_himem, picture_size, 0);
+            jpeg_draw(&jpg, tag_body, picture_size, 0);
             jpeg_close(&jpg);
           }
-          himem_free(tag_body_himem);
-          tag_body_himem = NULL;
+          free(tag_body);
+          tag_body = NULL;
         } else {
           _dos_seek(fd, picture_size, 1); // メモリ確保失敗時はスキップ
         }
@@ -313,10 +317,6 @@ exit:
   if (tag_body != NULL) {
     free(tag_body);
     tag_body = NULL;
-  }
-  if (tag_body_himem != NULL) {
-    himem_free(tag_body_himem);
-    tag_body_himem = NULL;
   }
 
   return rc;

@@ -2,7 +2,7 @@ import math
 
 # 設定
 sample_rates = [11025, 12000, 22050, 24000, 44100, 48000]
-target_freqs = [100, 250, 500, 1000, 2000, 4000, 8000] # 16000HzはサンプルレートによってはNyquist周波数を超えるため除外
+target_freqs = [125, 250, 500, 1000, 2000, 4000, 8000] # 16000HzはサンプルレートによってはNyquist周波数を超えるため除外
 shift_bits = 12
 
 #def calculate_biquad_bandpass(freq, fs, q=1.5):

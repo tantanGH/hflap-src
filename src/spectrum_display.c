@@ -10,9 +10,9 @@ static SPECTRUM_STREAM_HANDLE* g_spectrum_stream = NULL;
 //
 //  spectrum analyzer freq labels
 //
-// 100Hz (0-15列)
+// 125Hz (0-15列)
 static uint16_t band_label_100[] = {
-  0x0000, 0x3770, 0x1550, 0x1550, 0x1550, 0x1770, 0x0000, 0x0000
+  0x0000, 0x3770, 0x1140, 0x1770, 0x1410, 0x1770, 0x0000, 0x0000
 };
 
 // 250Hz (16-31列)
