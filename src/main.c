@@ -11,12 +11,12 @@
 // himem
 #include <himem.h>
 
-// jpeg
-#include <jpeg.h>
-
 // pcm driver
 #include <pcm8a.h>
 #include <pcm8pp.h>
+
+// jpeg
+#include "jpeg.h"
 
 // devices
 #include "keyboard.h"

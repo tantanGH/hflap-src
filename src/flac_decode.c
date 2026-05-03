@@ -5,7 +5,7 @@
 #include <x68k/iocs.h>
 #include <himem.h>
 #include <utf8_cp932.h>
-#include <jpeg.h>
+#include "jpeg.h"
 #include "flac_decode.h"
 
 //
