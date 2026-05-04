@@ -1,7 +1,7 @@
 #ifndef __H_HFLAP__
 #define __H_HFLAP__
 
-#define VERSION "0.9.0 (2026/05/02)"
+#define VERSION "0.9.5 (2026/05/04)"
 
 #define MAX_PATH_LEN (256)
 
@@ -25,6 +25,7 @@
 #define NUM_SPECTRUM_MODES  (16)
 #define SPECTRUM_SCALE      (48)
 #define SPECTRUM_FALL_SPEED (1)
+#define SPECTRUM_BASE_XPOS  (10)
 #define SPECTRUM_BASE_YPOS  (240)
 
 //

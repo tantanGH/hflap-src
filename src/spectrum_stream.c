@@ -1,12 +1,12 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include "spectrum.h"
+#include "spectrum_stream.h"
 #include "himem.h"
 
 // --- Coefficients for 11025 Hz ---
 static const FILTER_COEFFS coeff11[] = {
-{ 140, 0, -140, -6958, 3344 }, // 100Hz
+{ 174, 0, -174, -6885, 3277 }, // 125Hz
 { 331, 0, -331, -6521, 2963 }, // 250Hz
 { 351, 0, -351, -7188, 3394 }, // 500Hz
 { 624, 0, -624, -5846, 2847 }, // 1000Hz
@@ -17,7 +17,7 @@ static const FILTER_COEFFS coeff11[] = {
 
 // --- Coefficients for 12000 Hz ---
 static const FILTER_COEFFS coeff12[] = {
-{ 129, 0, -129, -6981, 3366 }, // 100Hz
+{ 160, 0, -160, -6914, 3304 }, // 125Hz
 { 306, 0, -306, -6580, 3012 }, // 250Hz
 { 325, 0, -325, -7284, 3445 }, // 500Hz
 { 585, 0, -585, -6081, 2926 }, // 1000Hz
@@ -28,7 +28,7 @@ static const FILTER_COEFFS coeff12[] = {
 
 // --- Coefficients for 22050 Hz ---
 static const FILTER_COEFFS coeff22[] = {
-{ 72, 0, -72, -7103, 3482 }, // 100Hz
+{ 89, 0, -89, -7067, 3447 }, // 125Hz
 { 174, 0, -174, -6885, 3277 }, // 250Hz
 { 185, 0, -185, -7743, 3726 }, // 500Hz
 { 351, 0, -351, -7188, 3394 }, // 1000Hz
@@ -39,7 +39,7 @@ static const FILTER_COEFFS coeff22[] = {
 
 // --- Coefficients for 24000 Hz ---
 static const FILTER_COEFFS coeff24[] = {
-{ 66, 0, -66, -7115, 3493 }, // 100Hz
+{ 82, 0, -82, -7082, 3461 }, // 125Hz
 { 160, 0, -160, -6914, 3304 }, // 250Hz
 { 171, 0, -171, -7783, 3754 }, // 500Hz
 { 325, 0, -325, -7284, 3445 }, // 1000Hz
@@ -48,9 +48,9 @@ static const FILTER_COEFFS coeff24[] = {
 { 918, 0, -918, 3178, 2261 }, // 8000Hz
 };
 
-// --- Coefficients for 44100 Hz (1.13) ---
+// --- Coefficients for 44100 Hz ---
 static const FILTER_COEFFS coeff44[] = {
-{ 36, 0, -36, -7177, 3552 }, // 100Hz
+{ 45, 0, -45, -7158, 3535 }, // 125Hz
 { 89, 0, -89, -7067, 3447 }, // 250Hz
 { 95, 0, -95, -7982, 3906 }, // 500Hz
 { 185, 0, -185, -7743, 3726 }, // 1000Hz
@@ -59,9 +59,9 @@ static const FILTER_COEFFS coeff44[] = {
 { 952, 0, -952, -2627, 2192 }, // 8000Hz
 };
 
-// --- Coefficients for 48000 Hz (1.13) ---
+// --- Coefficients for 48000 Hz ---
 static const FILTER_COEFFS coeff48[] = {
-{ 33, 0, -33, -7182, 3558 }, // 100Hz
+{ 41, 0, -41, -7166, 3542 }, // 125Hz
 { 82, 0, -82, -7082, 3461 }, // 250Hz
 { 87, 0, -87, -8000, 3921 }, // 500Hz
 { 171, 0, -171, -7783, 3754 }, // 1000Hz
@@ -71,7 +71,7 @@ static const FILTER_COEFFS coeff48[] = {
 };
 
 // スペクトラムアナライザの初期化
-int32_t spectrum_open(SPECTRUM_HANDLE* handle, int32_t sample_rate, int16_t bps, uint8_t display_scale, uint8_t fall_speed) {
+int32_t spectrum_stream_open(SPECTRUM_STREAM_HANDLE* handle, int32_t sample_rate, int16_t bps, uint8_t display_scale, uint8_t fall_speed) {
   
   // サンプルレートに応じたフィルタ係数のテーブルを選択
   if (sample_rate == 44100 || sample_rate == 88200) {
@@ -89,7 +89,7 @@ int32_t spectrum_open(SPECTRUM_HANDLE* handle, int32_t sample_rate, int16_t bps,
   handle->bps = bps;
 
   // バンドの状態初期化
-  for (int16_t b = 0; b < NUM_BANDS; b++) {
+  for (int16_t b = 0; b < SPECTRUM_NUM_BANDS; b++) {
     handle->bands_L[b].x1 = 0;
     handle->bands_L[b].x2 = 0;
     handle->bands_L[b].y1 = 0;
@@ -101,7 +101,7 @@ int32_t spectrum_open(SPECTRUM_HANDLE* handle, int32_t sample_rate, int16_t bps,
   }
 
   // ピークホールド値の初期化
-  for (int16_t b = 0; b < NUM_BANDS; b++) {
+  for (int16_t b = 0; b < SPECTRUM_NUM_BANDS; b++) {
     handle->current_frame_max_L[b] = 0;
     handle->current_frame_max_R[b] = 0;
   }
@@ -131,7 +131,7 @@ int32_t spectrum_open(SPECTRUM_HANDLE* handle, int32_t sample_rate, int16_t bps,
   memset(handle->meter_peak_values, 0, sizeof(METER_VALUE) * MAX_METER_FRAMES);
 
   // 最終出力値の初期化
-  for (int16_t b = 0; b < NUM_BANDS; b++) {
+  for (int16_t b = 0; b < SPECTRUM_NUM_BANDS; b++) {
     handle->bar_height_L[b] = 0;
     handle->bar_height_R[b] = 0;
     handle->peak_dot_height_L[b] = 0;
@@ -144,7 +144,7 @@ int32_t spectrum_open(SPECTRUM_HANDLE* handle, int32_t sample_rate, int16_t bps,
 }
 
 // ハンドルのクローズとメモリ解放
-void spectrum_close(SPECTRUM_HANDLE* handle) {
+void spectrum_stream_close(SPECTRUM_STREAM_HANDLE* handle) {
   if (handle->meter_values != NULL) {
     himem_free(handle->meter_values);
     handle->meter_values = NULL;
@@ -179,7 +179,7 @@ static int32_t process_biquad(int32_t input, BIQUAD_STATE* s, const FILTER_COEFF
 }
 
 // PCMデータを処理してスペクトラムアナライザの値を更新
-void spectrum_process(SPECTRUM_HANDLE* handle, const int16_t* pcm, size_t samples) {
+void spectrum_stream_process(SPECTRUM_STREAM_HANDLE* handle, const int16_t* pcm, size_t samples) {
 
   uint32_t accumulator = handle->resample_counter;
   uint32_t threshold = (handle->sample_rate == 44100 || handle->sample_rate == 88200) ? 44100000 : 48000000;
@@ -212,7 +212,7 @@ void spectrum_process(SPECTRUM_HANDLE* handle, const int16_t* pcm, size_t sample
 
     if ((i % 2) == 0) {
       // 2. 8つのフィルタを回す (2kHz, 4kHz, 8kHz)
-      for (int b = 4; b < NUM_BANDS; b++) {
+      for (int b = 4; b < SPECTRUM_NUM_BANDS; b++) {
 
         // フィルタ実行
         int32_t outL = process_biquad(L, &handle->bands_L[b], &handle->filter_coeffs_hi[b]);
@@ -238,7 +238,7 @@ void spectrum_process(SPECTRUM_HANDLE* handle, const int16_t* pcm, size_t sample
         METER_VALUE* v_bar = &handle->meter_values[handle->meter_values_pos];
         METER_VALUE* v_dot = &handle->meter_peak_values[handle->meter_values_pos];
 
-        for (int b = 0; b < NUM_BANDS; b++) {
+        for (int b = 0; b < SPECTRUM_NUM_BANDS; b++) {
 
           // 1フレーム中の最大値をスケール変換
           int32_t curL = (handle->current_frame_max_L[b] * handle->display_scale) >> 15;
