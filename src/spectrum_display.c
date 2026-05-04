@@ -4,8 +4,8 @@
 #include "spectrum_display.h"
 
 // 割り込みハンドラ向けグローバル変数
-static SPECTRUM_DISPLAY_HANDLE* g_spectrum_display = NULL;
-static SPECTRUM_STREAM_HANDLE* g_spectrum_stream = NULL;
+static volatile SPECTRUM_DISPLAY_HANDLE* g_spectrum_display = NULL;
+static volatile SPECTRUM_STREAM_HANDLE* g_spectrum_stream = NULL;
 
 //
 //  spectrum analyzer freq labels
@@ -107,12 +107,13 @@ static void __attribute__((interrupt)) refresh_spectrum_analyzer() {
   // TVRAMのベースアドレスと、描画するメーター値の位置を取得
   uint16_t* TVRAM0 = (uint16_t*)(spectrum_mode & 1 ? 0xe20000 : 0xe00000);
   uint16_t* TVRAM1 = (uint16_t*)(spectrum_mode & 1 ? 0xe00000 : 0xe20000);
-  size_t meter_pos = g_spectrum_display->meter_display_pos++;
+  size_t meter_pos = g_spectrum_display->meter_display_pos;
   METER_VALUE* v = &g_spectrum_stream->meter_values[meter_pos];
   METER_VALUE* vp = &g_spectrum_stream->meter_peak_values[meter_pos];
+  g_spectrum_display->meter_display_pos++;
 
   // 初回描画またはモード変化時は全描画
-  if (meter_pos == 1 || force_refresh) {
+  if (meter_pos == 0 || force_refresh) {
     for (int16_t b = 0; b < SPECTRUM_NUM_BANDS; b++) {
       int16_t ofsL = spectrum_mode & 2 ? xpos + 12 - b * 2 : xpos + b * 2;
       int16_t ofsR = xpos + 15 + b * 2;
@@ -141,7 +142,7 @@ static void __attribute__((interrupt)) refresh_spectrum_analyzer() {
   }
 
   // メインバー描画
-  METER_VALUE* v0 = &g_spectrum_stream->meter_values[meter_pos-2];
+  METER_VALUE* v0 = &g_spectrum_stream->meter_values[meter_pos-1];
   for (int16_t b = 0; b < SPECTRUM_NUM_BANDS; b++) {
     // 現在のメーター値
     uint8_t meter_value_L = v->meter_L[b];
@@ -182,7 +183,7 @@ static void __attribute__((interrupt)) refresh_spectrum_analyzer() {
   // peak hold 描画
   if (spectrum_mode & 4) {
     // 前フレームの描画位置取得
-    METER_VALUE* vp0 = &g_spectrum_stream->meter_peak_values[meter_pos-2];
+    METER_VALUE* vp0 = &g_spectrum_stream->meter_peak_values[meter_pos-1];
     for (int16_t b = 0; b < SPECTRUM_NUM_BANDS; b++) {
       // 現在のピーク位置
       uint8_t meter_value_L = vp->meter_L[b];
@@ -217,7 +218,7 @@ int32_t spectrum_display_open(SPECTRUM_DISPLAY_HANDLE* handle, SPECTRUM_STREAM_H
   handle->spectrum_stream = stream;
   handle->meter_display_pos = 0;
   handle->spectrum_mode = mode;
-  handle->spectrum_mode_prev = -1; // force refresh on first run
+  handle->spectrum_mode_prev = mode;
   handle->base_xpos = xpos;
   handle->base_ypos = ypos;
 
