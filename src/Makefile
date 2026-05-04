@@ -33,6 +33,7 @@ INCLUDE_FLAGS = -I${ELF2X68K_DIR}/lib/gcc/m68k-elf/13.4.0/include \
 				-I../libs/libutf8/include \
 				-I../libs/libpcm8a/include \
 				-I../libs/libpcm8pp/include \
+				-I../libs/libjpeg/include \
 				-I../libs/libfoxenflac-x68k/include
 
 # リンカオプションとライブラリ検索パス
@@ -40,21 +41,21 @@ LDFLAGS = -Wl,-s -Wl,--gc-sections \
 		  -L../libs/libhimem/lib -L../libs/libcmdline/lib \
 		  -L../libs/libj/lib -L../libs/libutf8/lib \
 		  -L../libs/libpcm8a/lib -L../libs/libpcm8pp/lib \
-		  -L../libs/libfoxenflac-x68k/lib
+		  -L../libs/libjpeg/lib -L../libs/libfoxenflac-x68k/lib
 
 # *.c ソースファイル
-C_SRCS = jpeg.c cp932rsc.c flac_decode.c spectrum_stream.c spectrum_display.c main.c
+C_SRCS = cp932rsc.c flac_decode.c spectrum_stream.c spectrum_display.c main.c
 
 # *.s ソースファイル
 ASM_SRCS = 
 
 # *.h source files
-HEADER_SRCS = stb_image.h jpeg.h keyboard.h cp932rsc.h flac_decode.h spectrum_stream.h spectrum_display.h hflap.h
+HEADER_SRCS = keyboard.h cp932rsc.h flac_decode.h spectrum_stream.h spectrum_display.h hflap.h
 
 # リンク対象のライブラリファイル
-LIBS_000 = -lhimem -lcmdline -lj -lutf8 -lpcm8a -lpcm8pp -lm -lfoxenflac
-LIBS_030 = -lhimem -lcmdline -lj -lutf8 -lpcm8a -lpcm8pp -lm -lfoxenflac030
-LIBS_060 = -lhimem -lcmdline -lj -lutf8 -lpcm8a -lpcm8pp -lm -lfoxenflac060
+LIBS_000 = -lhimem -lcmdline -lj -lutf8 -lpcm8a -lpcm8pp -ljpegstb    -lm -lfoxenflac
+LIBS_030 = -lhimem -lcmdline -lj -lutf8 -lpcm8a -lpcm8pp -ljpegstb030 -lm -lfoxenflac030
+LIBS_060 = -lhimem -lcmdline -lj -lutf8 -lpcm8a -lpcm8pp -ljpegstb060 -lm -lfoxenflac060
 
 # 中間ファイル生成用ディレクトリ
 INTERMEDIATE_DIR_000 = _build000/elf2x68k

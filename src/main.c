@@ -431,6 +431,64 @@ try:
     strcpy(error_mes, cp932rsc_not_flac_file);
     goto catch;
   }
+  _iocs_b_print(cp932rsc_erase_line);
+
+  // adjust scroll position
+  if (pic_brightness > 0) {
+    jpeg_open_text_masks();
+  }
+
+  // describe flac attributes
+  if (first_play || pic_brightness > 0 || spectrum_analyzer) {
+
+    static uint8_t mes[256];
+
+    _iocs_b_print(cp932rsc_crlf);
+
+    sprintf(mes, cp932rsc_flac_file_name, flac_file_name);
+    _iocs_b_print(mes);
+    //sprintf(mes, cp932rsc_flac_data_size, flac_data_size);
+    //_iocs_b_print(mes);
+    sprintf(mes, cp932rsc_flac_data_format, "FLAC");
+    _iocs_b_print(mes);
+
+    sprintf(mes, cp932rsc_pcm_driver, 
+              playback_driver == DRIVER_PCM8PP ? "PCM8PP" : 
+              playback_driver == DRIVER_PCM8A  ? "PCM8A"  : "-", 
+              playback_volume);
+    _iocs_b_print(mes);
+
+    uint32_t total_time_sec = flac_decoder.num_samples / flac_decoder.sample_rate;
+    sprintf(mes, cp932rsc_flac_total_time, total_time_sec / 60, total_time_sec % 60);
+    _iocs_b_print(mes);
+    sprintf(mes, cp932rsc_flac_frequency, flac_decoder.sample_rate);
+    _iocs_b_print(mes);
+    sprintf(mes, cp932rsc_flac_channels, flac_decoder.channels == 1 ? "mono" : "stereo");
+    _iocs_b_print(mes);
+    sprintf(mes, cp932rsc_flac_bit_depth, flac_decoder.bps);
+    _iocs_b_print(mes);
+
+    if (flac_decoder.tag_vendor != NULL) {
+      sprintf(mes, cp932rsc_flac_vendor, flac_decoder.tag_vendor);
+      _iocs_b_print(mes);
+    }
+    if (flac_decoder.tag_title != NULL) {
+      sprintf(mes, cp932rsc_flac_title, flac_decoder.tag_title);
+      _iocs_b_print(mes);
+    }
+    if (flac_decoder.tag_artist != NULL) {
+      sprintf(mes, cp932rsc_flac_artist, flac_decoder.tag_artist);
+      _iocs_b_print(mes);
+    }
+    if (flac_decoder.tag_album != NULL) {
+      sprintf(mes, cp932rsc_flac_album, flac_decoder.tag_album);
+      _iocs_b_print(mes);
+    }
+
+    _iocs_b_print(cp932rsc_crlf);
+
+    first_play = 0;
+  }
 
   // obtain data content size
   uint32_t skip_offset = _dos_seek(fd, 0, 1);
@@ -488,18 +546,12 @@ try:
   }
   _iocs_b_print(cp932rsc_erase_line);
 
-  // adjust scroll position
-  if (pic_brightness > 0) {
-    jpeg_open_text_masks();
-  }
-
   //printf("%02X %02X\n", ((uint8_t*)fread_buffer)[0], ((uint8_t*)fread_buffer)[1]);
 
   if (flac_decode_setup(&flac_decoder, fread_buffer, flac_data_size, continuous_read ? fread_buffer_len : 0) != 0) {
     strcpy(error_mes, cp932rsc_flac_decoder_setup_error);
     goto catch;
   }
-  _iocs_b_print(cp932rsc_erase_line);
 
   // initialize spectrum analyzer if spectrum analyzer mode is enabled
   if (spectrum_analyzer) {
@@ -513,58 +565,6 @@ try:
     }
     g_spectrum_stream = &spectrum_stream;
     g_spectrum_display = &spectrum_display;
-  }
-
-  // describe flac attributes
-  if (first_play || pic_brightness > 0 || spectrum_analyzer) {
-
-    static uint8_t mes[256];
-
-    _iocs_b_print(cp932rsc_crlf);
-
-    sprintf(mes, cp932rsc_flac_file_name, flac_file_name);
-    _iocs_b_print(mes);
-    sprintf(mes, cp932rsc_flac_data_size, flac_data_size);
-    _iocs_b_print(mes);
-    sprintf(mes, cp932rsc_flac_data_format, "FLAC");
-    _iocs_b_print(mes);
-
-    sprintf(mes, cp932rsc_pcm_driver, 
-              playback_driver == DRIVER_PCM8PP ? "PCM8PP" : 
-              playback_driver == DRIVER_PCM8A  ? "PCM8A"  : "-", 
-              playback_volume);
-    _iocs_b_print(mes);
-
-    uint32_t total_time_sec = flac_decoder.num_samples / flac_decoder.sample_rate;
-    sprintf(mes, cp932rsc_flac_total_time, total_time_sec / 60, total_time_sec % 60);
-    _iocs_b_print(mes);
-    sprintf(mes, cp932rsc_flac_frequency, flac_decoder.sample_rate);
-    _iocs_b_print(mes);
-    sprintf(mes, cp932rsc_flac_channels, flac_decoder.channels == 1 ? "mono" : "stereo");
-    _iocs_b_print(mes);
-    sprintf(mes, cp932rsc_flac_bit_depth, flac_decoder.bps);
-    _iocs_b_print(mes);
-
-    if (flac_decoder.tag_vendor != NULL) {
-      sprintf(mes, cp932rsc_flac_vendor, flac_decoder.tag_vendor);
-      _iocs_b_print(mes);
-    }
-    if (flac_decoder.tag_title != NULL) {
-      sprintf(mes, cp932rsc_flac_title, flac_decoder.tag_title);
-      _iocs_b_print(mes);
-    }
-    if (flac_decoder.tag_artist != NULL) {
-      sprintf(mes, cp932rsc_flac_artist, flac_decoder.tag_artist);
-      _iocs_b_print(mes);
-    }
-    if (flac_decoder.tag_album != NULL) {
-      sprintf(mes, cp932rsc_flac_album, flac_decoder.tag_album);
-      _iocs_b_print(mes);
-    }
-
-    _iocs_b_print(cp932rsc_crlf);
-
-    first_play = 0;
   }
 
   // initial buffering
