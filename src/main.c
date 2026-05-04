@@ -211,7 +211,6 @@ int32_t main(int32_t argc_, uint8_t* argv_[]) {
   int16_t num_buffers = DEFAULT_BUFFERS;
   int16_t use_high_memory = 0;
   int16_t playback_driver = DRIVER_NONE;
-  int16_t staging_file_read = 0;
   int16_t pic_brightness = 0;
   int16_t quiet_mode = 0;
   int16_t spectrum_analyzer = 0;
@@ -257,8 +256,6 @@ int32_t main(int32_t argc_, uint8_t* argv_[]) {
           show_help_message();
           goto exit;
         }
-      } else if (argv[i][1] == 's') {
-        staging_file_read = 1;
       } else if (argv[i][1] == 'n') {
         quiet_mode = 1;
       } else if (argv[i][1] == 'a') {
