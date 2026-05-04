@@ -531,14 +531,13 @@ try:
       size_t remain_len = flac_decoder.continuous_read_len - flac_decoder.continuous_read_pos;
       if (remain_len <= CONTINUOUS_FLAC_DRAIN_BYTES) {
         memcpy(fread_buffer, fread_buffer + flac_decoder.continuous_read_pos, remain_len);
-        flac_decoder.continuous_read_len = CONTINUOUS_FLAC_CONTINUE_BYTES;
-        flac_decoder.continuous_read_pos = 0;
-        size_t read_size = flac_decoder.continuous_read_len - remain_len;
+        size_t read_size = CONTINUOUS_FLAC_CONTINUE_BYTES - remain_len;
         if ((flac_decoder.flac_data_len - flac_decoder.flac_data_pos) < read_size) {
           read_size = flac_decoder.flac_data_len - flac_decoder.flac_data_pos;
-          flac_decoder.continuous_read_len = read_size;
         }
         size_t len = _dos_read(fd, fread_buffer + remain_len, read_size);
+        flac_decoder.continuous_read_len = remain_len + len;
+        flac_decoder.continuous_read_pos = 0;
       }
 
       // allocate a new chain table entry in high memory
@@ -610,14 +609,13 @@ try:
       size_t remain_len = flac_decoder.continuous_read_len - flac_decoder.continuous_read_pos;
       if (remain_len <= CONTINUOUS_FLAC_DRAIN_BYTES) {
         memcpy(fread_buffer, fread_buffer + flac_decoder.continuous_read_pos, remain_len);
-        flac_decoder.continuous_read_len = CONTINUOUS_FLAC_CONTINUE_BYTES;
-        flac_decoder.continuous_read_pos = 0;
-        size_t read_size = flac_decoder.continuous_read_len - remain_len;
+        size_t read_size = CONTINUOUS_FLAC_CONTINUE_BYTES - remain_len;
         if ((flac_decoder.flac_data_len - flac_decoder.flac_data_pos) < read_size) {
           read_size = flac_decoder.flac_data_len - flac_decoder.flac_data_pos;
-          flac_decoder.continuous_read_len = read_size;
         }
         size_t len = _dos_read(fd, fread_buffer + remain_len, read_size);
+        flac_decoder.continuous_read_len = remain_len + len;
+        flac_decoder.continuous_read_pos = 0;
       }
 
       // allocate a new chain table entry in high memory
@@ -827,14 +825,13 @@ try:
       size_t remain_len = flac_decoder.continuous_read_len - flac_decoder.continuous_read_pos;
       if (remain_len <= CONTINUOUS_FLAC_DRAIN_BYTES) {
         memcpy(fread_buffer, fread_buffer + flac_decoder.continuous_read_pos, remain_len);
-        flac_decoder.continuous_read_len = CONTINUOUS_FLAC_CONTINUE_BYTES;
-        flac_decoder.continuous_read_pos = 0;
-        size_t read_size = flac_decoder.continuous_read_len - remain_len;
+        size_t read_size = CONTINUOUS_FLAC_CONTINUE_BYTES - remain_len;
         if ((flac_decoder.flac_data_len - flac_decoder.flac_data_pos) < read_size) {
           read_size = flac_decoder.flac_data_len - flac_decoder.flac_data_pos;
-          flac_decoder.continuous_read_len = read_size;
         }
         size_t len = _dos_read(fd, fread_buffer + remain_len, read_size);
+        flac_decoder.continuous_read_len = remain_len + len;
+        flac_decoder.continuous_read_pos = 0;
       }
 
       // check block counter
@@ -1001,14 +998,13 @@ try:
       size_t remain_len = flac_decoder.continuous_read_len - flac_decoder.continuous_read_pos;
       if (remain_len <= CONTINUOUS_FLAC_DRAIN_BYTES) {
         memcpy(fread_buffer, fread_buffer + flac_decoder.continuous_read_pos, remain_len);
-        flac_decoder.continuous_read_len = CONTINUOUS_FLAC_CONTINUE_BYTES;
-        flac_decoder.continuous_read_pos = 0;
-        size_t read_size = flac_decoder.continuous_read_len - remain_len;
+        size_t read_size = CONTINUOUS_FLAC_CONTINUE_BYTES - remain_len;
         if ((flac_decoder.flac_data_len - flac_decoder.flac_data_pos) < read_size) {
           read_size = flac_decoder.flac_data_len - flac_decoder.flac_data_pos;
-          flac_decoder.continuous_read_len = read_size;
         }
         size_t len = _dos_read(fd, fread_buffer + remain_len, read_size);
+        flac_decoder.continuous_read_len = remain_len + len;
+        flac_decoder.continuous_read_pos = 0;
       }
 
       // check delta
