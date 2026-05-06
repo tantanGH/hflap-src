@@ -25,6 +25,8 @@ volatile static uint16_t* PAL_BLK1   = (uint16_t*)0xE82220;
 volatile static uint16_t* PAL_BLK2   = (uint16_t*)0xE82240;
 volatile static uint16_t* PAL_BLK3   = (uint16_t*)0xE82260;
 volatile static uint16_t* PAL_BLK4   = (uint16_t*)0xE82280;
+volatile static uint16_t* PAL_BLK5   = (uint16_t*)0xE822a0;
+volatile static uint16_t* PAL_BLK6   = (uint16_t*)0xE822c0;
 
 volatile static uint16_t* SP_SCRL    = (uint16_t*)0xEB0000;
 volatile static uint16_t* BG0_SCRL   = (uint16_t*)0xEB0800;
@@ -360,22 +362,20 @@ static uint16_t* band_labels[] = {
 //
 
 // 割り込みハンドラ向けグローバル変数
-static volatile SPECTRUM_DISPLAY_HANDLE* g_spectrum_display = NULL;
+static volatile SPECTRUM_PCG_HANDLE* g_spectrum_pcg = NULL;
 static volatile SPECTRUM_STREAM_HANDLE* g_spectrum_stream = NULL;
 
-#define PEAK_HOLD_BAR_BASE_YPOS  (212)
+#define MAX(a,b) ((a) > (b) ? (a) : (b))
 
 static void __attribute__((interrupt)) refresh_spectrum_analyzer() {
 
   // 追い越しチェック
-  if (g_spectrum_display->meter_display_pos >= g_spectrum_stream->meter_values_pos) {
+  if (g_spectrum_pcg->meter_display_pos >= g_spectrum_stream->meter_values_pos) {
     return;
   }
 
-  // 描画位置とモードをローカル変数にコピー
-  int16_t xpos = g_spectrum_display->base_xpos;
-  int16_t ypos = g_spectrum_display->base_ypos;
-  int16_t spectrum_mode = g_spectrum_display->spectrum_mode;
+  // モードをローカル変数にコピー
+  int16_t spectrum_mode = g_spectrum_pcg->spectrum_mode;
 
   // 表示スケールをローカル変数にコピー
   int16_t scale = g_spectrum_stream->display_scale;
@@ -384,39 +384,45 @@ static void __attribute__((interrupt)) refresh_spectrum_analyzer() {
   int16_t force_refresh = 0;
 
   // 描画するメーター値の位置を取得
-  size_t meter_pos = g_spectrum_display->meter_display_pos;
+  size_t meter_pos = g_spectrum_pcg->meter_display_pos;
   METER_VALUE* v = &g_spectrum_stream->meter_values[meter_pos];
-  g_spectrum_display->meter_display_pos++;
+  METER_VALUE* v0 = (meter_pos > 0) ? &g_spectrum_stream->meter_values[meter_pos-1] : NULL;
+  g_spectrum_pcg->meter_display_pos++;
+
+  if (spectrum_mode != g_spectrum_pcg->spectrum_mode_prev) {
+    g_spectrum_pcg->spectrum_mode_prev = spectrum_mode;
+    force_refresh = 1;
+  }
 
   // 初回描画またはモード変化時は全描画
   if (meter_pos == 0 || force_refresh) {
     for (int16_t b = 0; b < SPECTRUM_NUM_BANDS; b++) {
       // 現在のメーター値
-      uint8_t meter_value_L = v->meter_L[b];
-      uint8_t meter_value_R = v->meter_R[b];
+      uint8_t meter_value_L = v0 != NULL ? MAX(v0->meter_L[b],v->meter_L[b]) : v->meter_L[b];
+      uint8_t meter_value_R = v0 != NULL ? MAX(v0->meter_R[b],v->meter_R[b]) : v->meter_R[b];
       // 描画X位置計算
       int16_t xL = 12 - b * 2;
       int16_t xR = 16 + b * 2; 
-      for (int16_t m = 0; m <= v->meter_L[b]; m++) {
+      for (int16_t m = 0; m <= meter_value_L; m++) {
         // m=0,1 -> row=0, m=2,3 -> row=1... という関係にスライド
         int16_t row = m / 2;
         int16_t ty = 30 - row;
         volatile uint16_t* p0 = &BG_TEXT1[ (30 - row) * 64 + xL ];
         volatile uint16_t* p1 = &BG_TEXT1[ (31 + row) * 64 + xL ];
         // m=0 の時は強制的に「最初の色の下段(type_offset=1)」になるよう計算
-        int16_t color_offset = (m / 2) * 4;
+        int16_t color_offset = (m / 2) * 4 + 0x200 * spectrum_mode;
         int16_t type_offset = ((m % 2) == 0) ? 1 : 3; // 偶数(0,2,4...)ならlower, 奇数(1,3,5...)ならboth
         p0[0] = 0x100 + color_offset + type_offset;     // Left
         p0[1] = 0x100 + color_offset + type_offset + 1; // Right
         p1[0] = 0x8200 + color_offset + type_offset;     // Left
         p1[1] = 0x8200 + color_offset + type_offset + 1; // Right
       }
-      for (int16_t m = 0; m <= v->meter_R[b]; m++) {
+      for (int16_t m = 0; m <= meter_value_R; m++) {
         int16_t row = m / 2;
         int16_t ty = 30 - row;
         volatile uint16_t* p0 = &BG_TEXT1[ (30 - row) * 64 + xR ];
         volatile uint16_t* p1 = &BG_TEXT1[ (31 + row) * 64 + xR ];
-        int16_t color_offset = (m / 2) * 4; // 色ごとのオフセット
+        int16_t color_offset = (m / 2) * 4 + 0x200 * spectrum_mode; // 色ごとのオフセット
         int16_t type_offset = ((m % 2) == 0) ? 1 : 3; // 奇数ならlower, 偶数ならboth
         p0[0] = 0x100 + color_offset + type_offset;     // Left
         p0[1] = 0x100 + color_offset + type_offset + 1; // Right
@@ -427,8 +433,7 @@ static void __attribute__((interrupt)) refresh_spectrum_analyzer() {
     return;
   }
 
-// メインバー差分描画
-  METER_VALUE* v0 = &g_spectrum_stream->meter_values[meter_pos-1];
+  // メインバー差分描画
   for (int16_t b = 0; b < SPECTRUM_NUM_BANDS; b++) {
     // 現在のメーター値
     uint8_t meter_value_L = v->meter_L[b];
@@ -446,7 +451,7 @@ static void __attribute__((interrupt)) refresh_spectrum_analyzer() {
         int16_t ty = 30 - row;
         volatile uint16_t* p0 = &BG_TEXT1[ (30 - row) * 64 + xL ];
         volatile uint16_t* p1 = &BG_TEXT1[ (31 + row) * 64 + xL ];
-        int16_t color_offset = (m / 2) * 4; // 色ごとのオフセット
+        int16_t color_offset = (m / 2) * 4 + 0x200 * spectrum_mode; // 色ごとのオフセット
         int16_t type_offset = ((m % 2) == 0) ? 1 : 3; // 奇数ならlower, 偶数ならboth
         p0[0] = 0x100 + color_offset + type_offset;     // Left
         p0[1] = 0x100 + color_offset + type_offset + 1; // Right
@@ -465,7 +470,7 @@ static void __attribute__((interrupt)) refresh_spectrum_analyzer() {
         // 消去しようとしている m が現在の値(meter_value_L)と同じ行を共有しているかチェック
         if (row == (meter_value_L / 2)) {
           // 例：m=1(上下段)を消して m=0(下段のみ)にする場合
-          int16_t color_offset = row * 4;
+          int16_t color_offset = row * 4 + 0x200 * spectrum_mode;
           int16_t type_offset = 1; // 下段のみに書き換え
           p0[0] = 0x100 + color_offset + type_offset;
           p0[1] = 0x100 + color_offset + type_offset + 1;
@@ -486,7 +491,7 @@ static void __attribute__((interrupt)) refresh_spectrum_analyzer() {
         int16_t ty = 30 - row;
         volatile uint16_t* p0 = &BG_TEXT1[ (30 - row) * 64 + xR ];
         volatile uint16_t* p1 = &BG_TEXT1[ (31 + row) * 64 + xR ];
-        int16_t color_offset = (m / 2) * 4; // 色ごとのオフセット
+        int16_t color_offset = (m / 2) * 4 + 0x200 * spectrum_mode; // 色ごとのオフセット
         int16_t type_offset = ((m % 2) == 0) ? 1 : 3; // 奇数ならlower, 偶数ならboth
         p0[0] = 0x100 + color_offset + type_offset;     // Left
         p0[1] = 0x100 + color_offset + type_offset + 1; // Right
@@ -505,7 +510,7 @@ static void __attribute__((interrupt)) refresh_spectrum_analyzer() {
         // 消去しようとしている m が現在の値(meter_value_R)と同じ行を共有しているかチェック
         if (row == (meter_value_R / 2)) {
           // 例：m=1(上下段)を消して m=0(下段のみ)にする場合
-          int16_t color_offset = row * 4;
+          int16_t color_offset = row * 4 + 0x200 * spectrum_mode;
           int16_t type_offset = 1; // 下段のみに書き換え
           p0[0] = 0x100 + color_offset + type_offset;
           p0[1] = 0x100 + color_offset + type_offset + 1;
@@ -552,7 +557,7 @@ static void __attribute__((interrupt)) refresh_spectrum_analyzer() {
 }
 
 // スペクトラムディスプレイの初期化と表示位置設定
-int32_t spectrum_display_open(SPECTRUM_DISPLAY_HANDLE* handle, SPECTRUM_STREAM_HANDLE* stream, int16_t xpos, int16_t ypos, int16_t mode) {
+int32_t spectrum_pcg_open(SPECTRUM_PCG_HANDLE* handle, SPECTRUM_STREAM_HANDLE* stream, int16_t mode) {
 
   int32_t rc = -1;
 
@@ -562,10 +567,8 @@ int32_t spectrum_display_open(SPECTRUM_DISPLAY_HANDLE* handle, SPECTRUM_STREAM_H
   handle->meter_display_pos = 0;
   handle->spectrum_mode = mode;
   handle->spectrum_mode_prev = mode;
-  handle->base_xpos = xpos;
-  handle->base_ypos = ypos;
 
-  g_spectrum_display = handle;
+  g_spectrum_pcg = handle;
   g_spectrum_stream = stream;
 
   _iocs_crtmod(14);
@@ -577,6 +580,24 @@ int32_t spectrum_display_open(SPECTRUM_DISPLAY_HANDLE* handle, SPECTRUM_STREAM_H
   // original text palettes
   for (int16_t i = 0; i < 4; i++) {
     original_text_palettes[i] = _iocs_tpalet(i, -1);
+  }
+
+  // 8x8 フォントの初期化
+  for (int16_t i = 0; i < 256; i++) {
+
+    // 8x8 regular font
+    font_data_8x8[i].xl = 8;
+    font_data_8x8[i].yl = 8;
+    memcpy(font_data_8x8[i].buffer, FONT_ADDR_8x8 + FONT_BYTES_8x8 * i, FONT_BYTES_8x8);
+
+    // 8x8 bold font
+    font_data_8x8_bold[i].xl = 8;
+    font_data_8x8_bold[i].yl = 8;
+    memcpy(font_data_8x8_bold[i].buffer, FONT_ADDR_8x8 + FONT_BYTES_8x8 * i, FONT_BYTES_8x8);
+    for (int16_t j = 0; j < FONT_BYTES_8x8; j++) {
+      font_data_8x8_bold[i].buffer[j] |= ( font_data_8x8_bold[i].buffer[j] >> 1 ) & 0xff;
+    }
+
   }
 
   // SP:ON TX:OFF GR:OFF
@@ -676,6 +697,42 @@ int32_t spectrum_display_open(SPECTRUM_DISPLAY_HANDLE* handle, SPECTRUM_STREAM_H
     }
   }
 
+  // パレットブロック5,6: 黄緑
+  palBaseColorR = 204;
+  palBaseColorG = 240;
+  palBaseColorB = 12;
+  for (int16_t i = 0; i < 16; i++) {
+    if (i == 0) {
+      PAL_BLK5[i] = 0x0000;
+    } else {
+      int32_t ratio; 
+      if (i < 8) {
+        // 前半：急速に立ち上げる
+        ratio = (i + 4) * 256 / 15; // 底上げしつつ急上昇
+      } else {
+        // 後半：ほぼ最大輝度で飽和
+        ratio = 220 + (i * 2); // 256に近づけていく
+      }
+      if (ratio > 256) ratio = 256;
+
+      uint16_t r = (palBaseColorR * 31 / 255 * ratio / 256);
+      uint16_t g = (palBaseColorG * 31 / 255 * ratio / 256);
+      uint16_t b = (palBaseColorB * 31 / 255 * ratio / 256);
+
+      PAL_BLK5[i] = (g << 11) | (r << 6) | (b << 1) | 1;
+
+      ratio *= 0.33;
+      if (ratio > 256) ratio = 256;
+
+      r = (palBaseColorR * 31 / 255 * ratio / 256);
+      g = (palBaseColorG * 31 / 255 * ratio / 256);
+      b = (palBaseColorB * 31 / 255 * ratio / 256);
+
+      PAL_BLK6[i] = (g << 11) | (r << 6) | (b << 1) | 1;
+
+    }
+  }
+
   // バンド周波数の表示とピークホールドバー用スプライトの初期化
   WAIT_VSYNC;
   _iocs_tpalet(1, PAL_BLK1[15]);
@@ -699,11 +756,6 @@ int32_t spectrum_display_open(SPECTRUM_DISPLAY_HANDLE* handle, SPECTRUM_STREAM_H
     SP_SCRL[ b * 2 * 4 + 6 ] = 0x100 + 127;
     SP_SCRL[ b * 2 * 4 + 7 ] = 3;
   }
-
-  // パレットブロック2: 黄緑
-//    for (int16_t i = 15; i >= 0; i--) {
-//    PAL_BLK2[i] = ((210 * 32 / 256 * i / 15) << 11) | ((184 * 32 / 256 * i / 15) << 6) | ((0 * 32 / 256 * i / 15) << 1) | 1;
-//  }
 
   // BG TEXT1クリア
   for (int16_t y = 0; y < 64; y++) {
@@ -729,24 +781,6 @@ int32_t spectrum_display_open(SPECTRUM_DISPLAY_HANDLE* handle, SPECTRUM_STREAM_H
 //  *BG_CTRL = 0x219;   // SP/BG ON, BG1-BGTEXT1, BG0-BGTEXT0, BG1 ON, BG0 ON 
   *BG_CTRL = 0x20b;   // SP/BG ON, BG1-BGTEXT0, BG0-BGTEXT1, BG1 ON, BG0 ON 
 
-  // 8x8 フォントの初期化
-  for (int16_t i = 0; i < 256; i++) {
-
-    // 8x8 regular font
-    font_data_8x8[i].xl = 8;
-    font_data_8x8[i].yl = 8;
-    memcpy(font_data_8x8[i].buffer, FONT_ADDR_8x8 + FONT_BYTES_8x8 * i, FONT_BYTES_8x8);
-
-    // 8x8 bold font
-    font_data_8x8_bold[i].xl = 8;
-    font_data_8x8_bold[i].yl = 8;
-    memcpy(font_data_8x8_bold[i].buffer, FONT_ADDR_8x8 + FONT_BYTES_8x8 * i, FONT_BYTES_8x8);
-    for (int16_t j = 0; j < FONT_BYTES_8x8; j++) {
-      font_data_8x8_bold[i].buffer[j] |= ( font_data_8x8_bold[i].buffer[j] >> 1 ) & 0xff;
-    }
-
-  }
-
   rc = 0; // success
 
 exit:
@@ -757,9 +791,9 @@ exit:
 }
 
 // スペクトラムディスプレイのクローズ
-void spectrum_display_close(SPECTRUM_DISPLAY_HANDLE* handle) {
+void spectrum_pcg_close(SPECTRUM_PCG_HANDLE* handle) {
   if (handle == NULL) return;
-  g_spectrum_display = NULL;
+  g_spectrum_pcg = NULL;
   g_spectrum_stream = NULL;
 
     // original text palettes
@@ -769,7 +803,7 @@ void spectrum_display_close(SPECTRUM_DISPLAY_HANDLE* handle) {
 }
 
 // スペクトラムメーターの描画開始(一時停止後の再開もここから)
-int32_t spectrum_display_start(SPECTRUM_DISPLAY_HANDLE* handle) {
+int32_t spectrum_pcg_start(SPECTRUM_PCG_HANDLE* handle) {
   if (handle == NULL) return -1;
   int32_t rc = _iocs_vdispst((uint8_t*)refresh_spectrum_analyzer, 0, 1);
   if (rc == 0) {
@@ -781,31 +815,31 @@ int32_t spectrum_display_start(SPECTRUM_DISPLAY_HANDLE* handle) {
 }
 
 // スペクトラムメーターの描画停止
-void spectrum_display_stop(SPECTRUM_DISPLAY_HANDLE* handle) {
+void spectrum_pcg_stop(SPECTRUM_PCG_HANDLE* handle) {
   if (handle == NULL) return;
   _iocs_vdispst(NULL, 0, 0);
 }
 
 // スペクトラム表示モードの設定
-void spectrum_display_set_mode(SPECTRUM_DISPLAY_HANDLE* handle, int16_t mode) {
+void spectrum_pcg_set_mode(SPECTRUM_PCG_HANDLE* handle, int16_t mode) {
   if (handle == NULL) return;
-  handle->spectrum_mode = mode & NUM_SPECTRUM_MODES;
+  handle->spectrum_mode = mode & NUM_SPECTRUM_PCG_MODES;
 }
 
 // スペクトラム表示モードの切り替え（次のモード）
-void spectrum_display_next_mode(SPECTRUM_DISPLAY_HANDLE* handle) {
+void spectrum_pcg_next_mode(SPECTRUM_PCG_HANDLE* handle) {
   if (handle == NULL) return;
-  handle->spectrum_mode = (handle->spectrum_mode + 1) % NUM_SPECTRUM_MODES;
+  handle->spectrum_mode = (handle->spectrum_mode + 1) % NUM_SPECTRUM_PCG_MODES;
 }
 
 // スペクトラム表示モードの切り替え（前のモード）
-void spectrum_display_prev_mode(SPECTRUM_DISPLAY_HANDLE* handle) {
+void spectrum_pcg_prev_mode(SPECTRUM_PCG_HANDLE* handle) {
   if (handle == NULL) return;
-  handle->spectrum_mode = (handle->spectrum_mode - 1 + NUM_SPECTRUM_MODES) % NUM_SPECTRUM_MODES;
+  handle->spectrum_mode = (handle->spectrum_mode - 1 + NUM_SPECTRUM_PCG_MODES) % NUM_SPECTRUM_PCG_MODES;
 }
 
 // put text in 8x8 font
-void spectrum_display_put_text(SPECTRUM_DISPLAY_HANDLE* handle, uint16_t x, uint16_t y, uint16_t color, uint16_t bold, const uint8_t* text) {
+void spectrum_pcg_put_text(SPECTRUM_PCG_HANDLE* handle, uint16_t x, uint16_t y, uint16_t color, uint16_t bold, const uint8_t* text) {
 
   uint32_t usp = _iocs_b_super(0);
 

@@ -7,7 +7,7 @@ endif
 .SUFFIXES:
 
 # バージョン
-VERSION = 096
+VERSION = 097
 
 # 実行ファイル名
 TARGET_FILE_000 = HFLAP.X
@@ -44,7 +44,7 @@ LDFLAGS = -Wl,-s -Wl,--gc-sections \
 		  -L../libs/libjpeg/lib -L../libs/libfoxenflac-x68k/lib
 
 # *.c ソースファイル
-C_SRCS = cp932rsc.c flac_decode.c spectrum_stream.c spectrum_pcg.c main.c
+C_SRCS = cp932rsc.c flac_decode.c spectrum_stream.c spectrum_display.c spectrum_pcg.c main.c
 
 # *.s ソースファイル
 ASM_SRCS = 
