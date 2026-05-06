@@ -29,7 +29,8 @@
 
 // spectrum analyzer
 #include "spectrum_stream.h"
-#include "spectrum_display.h"
+//#include "spectrum_display.h"
+#include "spectrum_pcg.h"
 
 // application
 #include "hflap.h"
@@ -425,12 +426,102 @@ try:
     jpeg_open_text_masks();
   }
 
+  // obtain data content size
+  uint32_t skip_offset = _dos_seek(fd, 0, 1);
+  uint32_t flac_data_size = _dos_seek(fd, 0, 2) - skip_offset;
+  _dos_seek(fd, skip_offset, 0);
+
+  // allocate file read buffer (ハイメモリ)
+  size_t fread_buffer_len = CONTINUOUS_FLAC_BUFFER_BYTES;
+  fread_buffer = himem_malloc(fread_buffer_len);
+  if (fread_buffer == NULL) {
+    strcpy(error_mes, cp932rsc_himem_shortage);
+    goto catch;
+  }
+
+  // FLACデコーダーの初期化
+  if (flac_decode_setup(&flac_decoder, fread_buffer, flac_data_size, 0) != 0) {
+    strcpy(error_mes, cp932rsc_flac_decoder_setup_error);
+    goto catch;
+  }
+
+  // initialize spectrum analyzer if spectrum analyzer mode is enabled
+  if (spectrum_analyzer) {
+    if (spectrum_stream_open(&spectrum_stream, flac_decoder.sample_rate, flac_decoder.bps, SPECTRUM_SCALE, SPECTRUM_FALL_SPEED) != 0) {
+      strcpy(error_mes, cp932rsc_spectrum_analyzer_init_error);
+      goto catch;
+    }
+    if (spectrum_display_open(&spectrum_display, &spectrum_stream, SPECTRUM_BASE_XPOS, SPECTRUM_BASE_YPOS, spectrum_mode) != 0) {
+      strcpy(error_mes, cp932rsc_spectrum_display_init_error);
+      goto catch;
+    }
+    g_spectrum_stream = &spectrum_stream;
+    g_spectrum_display = &spectrum_display;
+  }
+
   // describe flac attributes
-  if (first_play || pic_brightness > 0 || spectrum_analyzer) {
+  if (spectrum_analyzer) {
 
     static uint8_t mes[256];
+    int16_t ty = 8;
 
-    _iocs_b_print(cp932rsc_crlf);
+    sprintf(mes, "%s", flac_file_name);
+    spectrum_display_put_text(&spectrum_display,0,ty,3,1,mes);
+    ty += 8;
+
+//    sprintf(mes, cp932rsc_flac_data_format, "FLAC");
+//    _iocs_b_print(mes);
+    
+    //sprintf(mes, " - %d[Hz]/%d[bit]/%02d:%02d", flac_decoder.sample_rate, flac_decoder.bps);
+    //spectrum_display_put_text(&spectrum_display,0,ty,3,1,mes);
+    //ty += 8;
+
+    uint32_t total_time_sec = flac_decoder.num_samples / flac_decoder.sample_rate;
+    sprintf(mes, " - %d[Hz]/%d[bit]/%02d:%02d", flac_decoder.sample_rate, flac_decoder.bps, total_time_sec / 60, total_time_sec % 60);
+    spectrum_display_put_text(&spectrum_display,0,ty,3,1,mes);
+    ty += 8;
+
+    sprintf(mes, " - %s(VOL:%d)", 
+              playback_driver == DRIVER_PCM8PP ? "PCM8PP" : 
+              playback_driver == DRIVER_PCM8A  ? "PCM8A"  : "-", 
+              playback_volume);
+    spectrum_display_put_text(&spectrum_display,0,ty,3,1,mes);
+    ty += 8;
+
+//    sprintf(mes, cp932rsc_flac_channels, flac_decoder.channels == 1 ? "mono" : "stereo");
+//    _iocs_b_print(mes);
+//    sprintf(mes, cp932rsc_flac_bit_depth, flac_decoder.bps);
+//    spectrum_display_put_text(&spectrum_display,0,ty,3,1,mes);
+    ty += 8;
+
+    if (flac_decoder.tag_vendor != NULL) {
+      sprintf(mes, cp932rsc_flac_vendor, flac_decoder.tag_vendor);
+//      spectrum_display_put_text(&spectrum_display,0,ty,3,1,mes);
+//      ty += 8;
+    }
+    if (flac_decoder.tag_title != NULL) {
+      sprintf(mes, cp932rsc_flac_title, flac_decoder.tag_title);
+//      spectrum_display_put_text(&spectrum_display,0,ty,3,1,mes);
+//      ty += 8;
+    }
+    if (flac_decoder.tag_artist != NULL) {
+      sprintf(mes, cp932rsc_flac_artist, flac_decoder.tag_artist);
+//      spectrum_display_put_text(&spectrum_display,0,ty,3,1,mes);
+//      ty += 8;
+    }
+    if (flac_decoder.tag_album != NULL) {
+      sprintf(mes, cp932rsc_flac_album, flac_decoder.tag_album);
+//      spectrum_display_put_text(&spectrum_display,0,ty,3,1,mes);
+//      ty += 8;
+    }
+
+//    _iocs_b_print(cp932rsc_crlf);
+
+    first_play = 0;    
+
+  } else if (first_play || pic_brightness > 0) {
+
+    static uint8_t mes[256];
 
     sprintf(mes, cp932rsc_flac_file_name, flac_file_name);
     _iocs_b_print(mes);
@@ -475,39 +566,7 @@ try:
     _iocs_b_print(cp932rsc_crlf);
 
     first_play = 0;
-  }
 
-  // obtain data content size
-  uint32_t skip_offset = _dos_seek(fd, 0, 1);
-  uint32_t flac_data_size = _dos_seek(fd, 0, 2) - skip_offset;
-  _dos_seek(fd, skip_offset, 0);
-
-  // allocate file read buffer (ハイメモリ)
-  size_t fread_buffer_len = CONTINUOUS_FLAC_BUFFER_BYTES;
-  fread_buffer = himem_malloc(fread_buffer_len);
-  if (fread_buffer == NULL) {
-    strcpy(error_mes, cp932rsc_himem_shortage);
-    goto catch;
-  }
-
-  // FLACデコーダーの初期化
-  if (flac_decode_setup(&flac_decoder, fread_buffer, flac_data_size, 0) != 0) {
-    strcpy(error_mes, cp932rsc_flac_decoder_setup_error);
-    goto catch;
-  }
-
-  // initialize spectrum analyzer if spectrum analyzer mode is enabled
-  if (spectrum_analyzer) {
-    if (spectrum_stream_open(&spectrum_stream, flac_decoder.sample_rate, flac_decoder.bps, SPECTRUM_SCALE, SPECTRUM_FALL_SPEED) != 0) {
-      strcpy(error_mes, cp932rsc_spectrum_analyzer_init_error);
-      goto catch;
-    }
-    if (spectrum_display_open(&spectrum_display, &spectrum_stream, SPECTRUM_BASE_XPOS, SPECTRUM_BASE_YPOS, spectrum_mode) != 0) {
-      strcpy(error_mes, cp932rsc_spectrum_display_init_error);
-      goto catch;
-    }
-    g_spectrum_stream = &spectrum_stream;
-    g_spectrum_display = &spectrum_display;
   }
 
   // initial buffering
@@ -518,8 +577,10 @@ try:
 
     static uint8_t mes[256];
     if (i < num_buffers) {
-      sprintf(mes, cp932rsc_now_buffering, i+1, num_buffers);
-      _iocs_b_print(mes);
+      if (!quiet_mode) {
+        sprintf(mes, cp932rsc_now_buffering, i+1, num_buffers);
+        _iocs_b_print(mes);
+      }
     }
 
     if (playback_driver == DRIVER_PCM8A) {
@@ -731,8 +792,14 @@ try:
 
   }
 
-  _iocs_b_print(cp932rsc_erase_line_and_up);
-  _iocs_b_print(cp932rsc_now_playing);
+
+  if (spectrum_analyzer) {
+//    spectrum_display_put_text(&spectrum_display,0,64,3,1,"NOW PLAYING...");
+//    spectrum_display_put_text(&spectrum_display,0,72,3,1," ESC/Q:EXIT SPACE:PAUSE");
+  } else {
+    _iocs_b_print(cp932rsc_erase_line_and_up);
+    _iocs_b_print(cp932rsc_now_playing);
+  }
 
   int16_t paused = 0;
 

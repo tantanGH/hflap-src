@@ -44,13 +44,13 @@ LDFLAGS = -Wl,-s -Wl,--gc-sections \
 		  -L../libs/libjpeg/lib -L../libs/libfoxenflac-x68k/lib
 
 # *.c ソースファイル
-C_SRCS = cp932rsc.c flac_decode.c spectrum_stream.c spectrum_display.c main.c
+C_SRCS = cp932rsc.c flac_decode.c spectrum_stream.c spectrum_pcg.c main.c
 
 # *.s ソースファイル
 ASM_SRCS = 
 
 # *.h source files
-HEADER_SRCS = keyboard.h cp932rsc.h flac_decode.h spectrum_stream.h spectrum_display.h hflap.h
+HEADER_SRCS = keyboard.h cp932rsc.h flac_decode.h spectrum_stream.h spectrum_pcg.h hflap.h
 
 # リンク対象のライブラリファイル
 LIBS_000 = -lhimem -lcmdline -lj -lutf8 -lpcm8a -lpcm8pp -ljpegstb    -lm -lfoxenflac
