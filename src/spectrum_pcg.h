@@ -8,6 +8,12 @@
 #define NUM_SPECTRUM_PCG_MODES (3)
 #define DEFAULT_SPECTRUM_PCG_MODE (0)       
 
+#define BASE_XPOS_L (13)
+#define BASE_XPOS_R (17)
+
+#define BASE_YPOS_0 (24)
+#define BASE_YPOS_1 (25)
+
 #define PEAK_HOLD_BAR_BASE_YPOS  (212)
 
 // スペクトラムメーターのハンドル構造体

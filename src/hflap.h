@@ -20,7 +20,8 @@
 #define DEFAULT_BUFFERS (4)
 
 #define NUM_SPECTRUM_MODES  (16)
-#define SPECTRUM_SCALE      (30)
+#define SPECTRUM_SCALE      (48)
+#define SPECTRUM_SCALE_PCG  (30)
 #define SPECTRUM_FALL_SPEED (1)
 #define SPECTRUM_BASE_XPOS  (10)
 #define SPECTRUM_BASE_YPOS  (240)

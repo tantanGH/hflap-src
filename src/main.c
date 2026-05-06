@@ -341,6 +341,7 @@ int32_t main(int32_t argc_, uint8_t* argv_[]) {
 
   // full screen の時はアルバムアートと進捗の表示は行わない
   if (spectrum_analyzer_pcg) {
+    spectrum_analyzer = 0;
     pic_brightness = 0;
     quiet_mode = 1;
   }
@@ -471,25 +472,28 @@ try:
   }
 
   // initialize spectrum analyzer if spectrum analyzer mode is enabled
-  if (spectrum_analyzer || spectrum_analyzer_pcg) {
+  if (spectrum_analyzer) {
     if (spectrum_stream_open(&spectrum_stream, flac_decoder.sample_rate, flac_decoder.bps, SPECTRUM_SCALE, SPECTRUM_FALL_SPEED) != 0) {
       strcpy(error_mes, cp932rsc_spectrum_analyzer_init_error);
       goto catch;
     }
     g_spectrum_stream = &spectrum_stream;
-    if (!spectrum_analyzer_pcg) {
-      if (spectrum_display_open(&spectrum_display, &spectrum_stream, SPECTRUM_BASE_XPOS, SPECTRUM_BASE_YPOS, spectrum_mode) != 0) {
-        strcpy(error_mes, cp932rsc_spectrum_display_init_error);
-        goto catch;
-      }
-      g_spectrum_display = &spectrum_display;
-    } else {
-      if (spectrum_pcg_open(&spectrum_pcg, &spectrum_stream, spectrum_mode) != 0) {
-        strcpy(error_mes, cp932rsc_spectrum_display_init_error);
-        goto catch;
-      }
-      g_spectrum_pcg = &spectrum_pcg;    
+    if (spectrum_display_open(&spectrum_display, &spectrum_stream, SPECTRUM_BASE_XPOS, SPECTRUM_BASE_YPOS, spectrum_mode) != 0) {
+      strcpy(error_mes, cp932rsc_spectrum_display_init_error);
+      goto catch;
     }
+    g_spectrum_display = &spectrum_display;
+  } else if (spectrum_analyzer_pcg) {
+    if (spectrum_stream_open(&spectrum_stream, flac_decoder.sample_rate, flac_decoder.bps, SPECTRUM_SCALE_PCG, SPECTRUM_FALL_SPEED) != 0) {
+      strcpy(error_mes, cp932rsc_spectrum_analyzer_init_error);
+      goto catch;
+    }
+    g_spectrum_stream = &spectrum_stream;
+    if (spectrum_pcg_open(&spectrum_pcg, &spectrum_stream, spectrum_mode) != 0) {
+      strcpy(error_mes, cp932rsc_spectrum_display_init_error);
+      goto catch;
+    }
+    g_spectrum_pcg = &spectrum_pcg;    
   }
 
   // describe flac attributes
@@ -1285,6 +1289,11 @@ catch:
   _iocs_b_print(cp932rsc_crlf);
 
 exit:
+
+  if (spectrum_analyzer_pcg) {
+    _iocs_crtmod(16);
+    _iocs_g_clr_on();
+  }
 
   // screen clear
   if (pic_brightness > 0) {

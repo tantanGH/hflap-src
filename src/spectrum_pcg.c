@@ -35,6 +35,7 @@ volatile static uint16_t* BG_CTRL    = (uint16_t*)0xEB0808;
 volatile static uint16_t* SP_CTRL    = (uint16_t*)0xEB080A;
 
 volatile static uint16_t* PCG        = (uint16_t*)0xEB8000;
+volatile static uint16_t* PCG_64     = (uint16_t*)0xEBA000;
 volatile static uint16_t* PCG_127    = (uint16_t*)0xEBBF80;
 volatile static uint16_t* BG_TEXT0   = (uint16_t*)0xEBC000;
 volatile static uint16_t* BG_TEXT1   = (uint16_t*)0xEBE000;
@@ -299,7 +300,7 @@ static const uint16_t star_patterns[] = {
 //
 //  PCG patterns (peak hold bar)
 //
-static const uint16_t peak_bar_patterns[] = {
+static const uint16_t sprite_peak_bar_patterns[] = {
   // 32x32 (sprite)
   0xFFFF, 0xFFFF, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
   0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
@@ -312,6 +313,63 @@ static const uint16_t peak_bar_patterns[] = {
 
   0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
   0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
+};
+
+//
+//  PCG patterns (sprite stars)
+//
+static const uint16_t sprite_star_patterns[] = {
+  // 32x32 (sprite)
+  0xF000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
+  0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
+
+  0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
+  0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,  
+
+  0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
+  0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
+
+  0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
+  0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
+
+  // 32x32 (sprite)
+  0xC000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
+  0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
+
+  0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
+  0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,  
+
+  0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
+  0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
+
+  0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
+  0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
+
+  // 32x32 (sprite)
+  0xA000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
+  0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
+
+  0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
+  0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,  
+
+  0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
+  0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
+
+  0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
+  0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,  
+
+  // 32x32 (sprite)
+  0x6000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
+  0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
+
+  0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
+  0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,  
+
+  0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
+  0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
+
+  0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
+  0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,  
 };
 
 //
@@ -365,8 +423,6 @@ static uint16_t* band_labels[] = {
 static volatile SPECTRUM_PCG_HANDLE* g_spectrum_pcg = NULL;
 static volatile SPECTRUM_STREAM_HANDLE* g_spectrum_stream = NULL;
 
-#define MAX(a,b) ((a) > (b) ? (a) : (b))
-
 static void __attribute__((interrupt)) refresh_spectrum_analyzer() {
 
   // 追い越しチェック
@@ -389,6 +445,7 @@ static void __attribute__((interrupt)) refresh_spectrum_analyzer() {
   METER_VALUE* v0 = (meter_pos > 0) ? &g_spectrum_stream->meter_values[meter_pos-1] : NULL;
   g_spectrum_pcg->meter_display_pos++;
 
+  // モード変更の検知
   if (spectrum_mode != g_spectrum_pcg->spectrum_mode_prev) {
     g_spectrum_pcg->spectrum_mode_prev = spectrum_mode;
     force_refresh = 1;
@@ -398,17 +455,20 @@ static void __attribute__((interrupt)) refresh_spectrum_analyzer() {
   if (meter_pos == 0 || force_refresh) {
     for (int16_t b = 0; b < SPECTRUM_NUM_BANDS; b++) {
       // 現在のメーター値
-      uint8_t meter_value_L = v0 != NULL ? MAX(v0->meter_L[b],v->meter_L[b]) : v->meter_L[b];
-      uint8_t meter_value_R = v0 != NULL ? MAX(v0->meter_R[b],v->meter_R[b]) : v->meter_R[b];
+      uint8_t meter_value_L = v->meter_L[b];
+      uint8_t meter_value_R = v->meter_R[b];
+      // 直前のメーター値
+      uint8_t meter_value_L0 = (v0 != NULL) ? v0->meter_L[b] : 0;
+      uint8_t meter_value_R0 = (v0 != NULL) ? v0->meter_R[b] : 0;
       // 描画X位置計算
-      int16_t xL = 12 - b * 2;
-      int16_t xR = 16 + b * 2; 
+      int16_t xL = BASE_XPOS_L - b * 2;
+      int16_t xR = BASE_XPOS_R + b * 2; 
       for (int16_t m = 0; m <= meter_value_L; m++) {
         // m=0,1 -> row=0, m=2,3 -> row=1... という関係にスライド
         int16_t row = m / 2;
-        int16_t ty = 30 - row;
-        volatile uint16_t* p0 = &BG_TEXT1[ (30 - row) * 64 + xL ];
-        volatile uint16_t* p1 = &BG_TEXT1[ (31 + row) * 64 + xL ];
+        int16_t ty = BASE_YPOS_0 - row;
+        volatile uint16_t* p0 = &BG_TEXT1[ (BASE_YPOS_0 - row) * 64 + xL ];
+        volatile uint16_t* p1 = &BG_TEXT1[ (BASE_YPOS_1 + row) * 64 + xL ];
         // m=0 の時は強制的に「最初の色の下段(type_offset=1)」になるよう計算
         int16_t color_offset = (m / 2) * 4 + 0x200 * spectrum_mode;
         int16_t type_offset = ((m % 2) == 0) ? 1 : 3; // 偶数(0,2,4...)ならlower, 奇数(1,3,5...)ならboth
@@ -419,16 +479,43 @@ static void __attribute__((interrupt)) refresh_spectrum_analyzer() {
       }
       for (int16_t m = 0; m <= meter_value_R; m++) {
         int16_t row = m / 2;
-        int16_t ty = 30 - row;
-        volatile uint16_t* p0 = &BG_TEXT1[ (30 - row) * 64 + xR ];
-        volatile uint16_t* p1 = &BG_TEXT1[ (31 + row) * 64 + xR ];
+        int16_t ty = BASE_YPOS_0 - row;
+        volatile uint16_t* p0 = &BG_TEXT1[ (BASE_YPOS_0 - row) * 64 + xR ];
+        volatile uint16_t* p1 = &BG_TEXT1[ (BASE_YPOS_1 + row) * 64 + xR ];
         int16_t color_offset = (m / 2) * 4 + 0x200 * spectrum_mode; // 色ごとのオフセット
         int16_t type_offset = ((m % 2) == 0) ? 1 : 3; // 奇数ならlower, 偶数ならboth
         p0[0] = 0x100 + color_offset + type_offset;     // Left
         p0[1] = 0x100 + color_offset + type_offset + 1; // Right
         p1[0] = 0x8200 + color_offset + type_offset;     // Left
         p1[1] = 0x8200 + color_offset + type_offset + 1; // Right
-      }  
+      }
+      // 直前のピーク値が現在のピークよりも大きかった場合は消しておく
+      if (meter_value_L0 > meter_value_L) {
+        for (int16_t m = meter_value_L + 1; m <= meter_value_L0; m++) {
+          int16_t row = m / 2;
+          int16_t ty = BASE_YPOS_0 - row;
+          volatile uint16_t* p0 = &BG_TEXT1[ (BASE_YPOS_0 - row) * 64 + xL ];
+          volatile uint16_t* p1 = &BG_TEXT1[ (BASE_YPOS_1 + row) * 64 + xL ];
+          int16_t color_offset = 0x200 * spectrum_mode;
+          p0[0] = 0x100 + color_offset;     // Left
+          p0[1] = 0x100 + color_offset; // Right
+          p1[0] = 0x8200 + color_offset;     // Left
+          p1[1] = 0x8200 + color_offset; // Right
+        }
+      }
+      if (meter_value_R0 > meter_value_R) {
+        for (int16_t m = meter_value_R + 1; m <= meter_value_R0; m++) {
+          int16_t row = m / 2;
+          int16_t ty = BASE_YPOS_0 - row;
+          volatile uint16_t* p0 = &BG_TEXT1[ (BASE_YPOS_0 - row) * 64 + xR ];
+          volatile uint16_t* p1 = &BG_TEXT1[ (BASE_YPOS_1 + row) * 64 + xR ];
+          int16_t color_offset = 0x200 * spectrum_mode;
+          p0[0] = 0x100 + color_offset;     // Left
+          p0[1] = 0x100 + color_offset; // Right
+          p1[0] = 0x8200 + color_offset;     // Left
+          p1[1] = 0x8200 + color_offset; // Right
+        }
+      } 
     }
     return;
   }
@@ -442,15 +529,15 @@ static void __attribute__((interrupt)) refresh_spectrum_analyzer() {
     uint8_t meter_value_L0 = v0->meter_L[b];
     uint8_t meter_value_R0 = v0->meter_R[b];
     // 描画X位置計算
-    int16_t xL = 12 - b * 2;
-    int16_t xR = 16 + b * 2;
+    int16_t xL = BASE_XPOS_L - b * 2;
+    int16_t xR = BASE_XPOS_R + b * 2;
     // メーター値が変わっていたら更新
     if (meter_value_L > meter_value_L0) {
       for (int16_t m = meter_value_L0 + 1; m <= meter_value_L; m++) {
         int16_t row = m / 2;
-        int16_t ty = 30 - row;
-        volatile uint16_t* p0 = &BG_TEXT1[ (30 - row) * 64 + xL ];
-        volatile uint16_t* p1 = &BG_TEXT1[ (31 + row) * 64 + xL ];
+        int16_t ty = BASE_YPOS_0 - row;
+        volatile uint16_t* p0 = &BG_TEXT1[ (BASE_YPOS_0 - row) * 64 + xL ];
+        volatile uint16_t* p1 = &BG_TEXT1[ (BASE_YPOS_1 + row) * 64 + xL ];
         int16_t color_offset = (m / 2) * 4 + 0x200 * spectrum_mode; // 色ごとのオフセット
         int16_t type_offset = ((m % 2) == 0) ? 1 : 3; // 奇数ならlower, 偶数ならboth
         p0[0] = 0x100 + color_offset + type_offset;     // Left
@@ -464,9 +551,9 @@ static void __attribute__((interrupt)) refresh_spectrum_analyzer() {
         if (m == 0) break; // m=0 (ベースライン) は絶対に消さない
         
         int16_t row = m / 2;
-        int16_t ty = 30 - row;
-        volatile uint16_t* p0 = &BG_TEXT1[ (30 - row) * 64 + xL ];
-        volatile uint16_t* p1 = &BG_TEXT1[ (31 + row) * 64 + xL ];         
+        int16_t ty = BASE_YPOS_0 - row;
+        volatile uint16_t* p0 = &BG_TEXT1[ (BASE_YPOS_0 - row) * 64 + xL ];
+        volatile uint16_t* p1 = &BG_TEXT1[ (BASE_YPOS_1 + row) * 64 + xL ];         
         // 消去しようとしている m が現在の値(meter_value_L)と同じ行を共有しているかチェック
         if (row == (meter_value_L / 2)) {
           // 例：m=1(上下段)を消して m=0(下段のみ)にする場合
@@ -488,9 +575,9 @@ static void __attribute__((interrupt)) refresh_spectrum_analyzer() {
     if (meter_value_R > meter_value_R0) {
       for (int16_t m = meter_value_R0 + 1; m <= meter_value_R; m++) {
         int16_t row = m / 2;
-        int16_t ty = 30 - row;
-        volatile uint16_t* p0 = &BG_TEXT1[ (30 - row) * 64 + xR ];
-        volatile uint16_t* p1 = &BG_TEXT1[ (31 + row) * 64 + xR ];
+        int16_t ty = BASE_YPOS_0 - row;
+        volatile uint16_t* p0 = &BG_TEXT1[ (BASE_YPOS_0 - row) * 64 + xR ];
+        volatile uint16_t* p1 = &BG_TEXT1[ (BASE_YPOS_1 + row) * 64 + xR ];
         int16_t color_offset = (m / 2) * 4 + 0x200 * spectrum_mode; // 色ごとのオフセット
         int16_t type_offset = ((m % 2) == 0) ? 1 : 3; // 奇数ならlower, 偶数ならboth
         p0[0] = 0x100 + color_offset + type_offset;     // Left
@@ -503,9 +590,9 @@ static void __attribute__((interrupt)) refresh_spectrum_analyzer() {
         if (m == 0) break; // m=0 (ベースライン) は絶対に消さない
         
         int16_t row = m / 2;
-        int16_t ty = 30 - row;
-        volatile uint16_t* p0 = &BG_TEXT1[ (30 - row) * 64 + xR ];
-        volatile uint16_t* p1 = &BG_TEXT1[ (31 + row) * 64 + xR ];
+        int16_t ty = BASE_YPOS_0 - row;
+        volatile uint16_t* p0 = &BG_TEXT1[ (BASE_YPOS_0 - row) * 64 + xR ];
+        volatile uint16_t* p1 = &BG_TEXT1[ (BASE_YPOS_1 + row) * 64 + xR ];
 
         // 消去しようとしている m が現在の値(meter_value_R)と同じ行を共有しているかチェック
         if (row == (meter_value_R / 2)) {
@@ -554,6 +641,13 @@ static void __attribute__((interrupt)) refresh_spectrum_analyzer() {
 
   // BG1スクロール
   BG1_SCRL[1] = 511 - (meter_pos / 2) % 512;
+
+  // ランダム星スプライトのスクロール
+  for (int16_t i = 0; i < 16; i++) {
+    if (i < 4 || (meter_pos % (2+i/4)) == 0) {
+      SP_SCRL[ (16 + i) * 4 + 1 ] = (SP_SCRL[ (16 + i) * 4 + 1 ] + 1) % 512;
+    }
+  }
 }
 
 // スペクトラムディスプレイの初期化と表示位置設定
@@ -600,6 +694,8 @@ int32_t spectrum_pcg_open(SPECTRUM_PCG_HANDLE* handle, SPECTRUM_STREAM_HANDLE* s
 
   }
 
+  WAIT_VBLANK;
+
   // SP:ON TX:OFF GR:OFF
   *VDC_R2 |= 0x40;                        
 
@@ -608,7 +704,7 @@ int32_t spectrum_pcg_open(SPECTRUM_PCG_HANDLE* handle, SPECTRUM_STREAM_HANDLE* s
   
   // BG0スクロール位置初期化
   BG0_SCRL[0] = 0;
-  BG0_SCRL[1] = 48;
+  BG0_SCRL[1] = 0;
   BG1_SCRL[0] = 0;
   BG1_SCRL[1] = 0;
 
@@ -617,19 +713,24 @@ int32_t spectrum_pcg_open(SPECTRUM_PCG_HANDLE* handle, SPECTRUM_STREAM_HANDLE* s
     SP_SCRL[ i * 4 + 3 ] = 0;               
   }
 
-  // PCG定義(0~60,8x8)
+  // BG PCG定義(0~60,8x8)
   for (int16_t i = 0; i <= 60; i++) {
     memcpy((void*)PCG + i * 32, (void*)(&bar_patterns[i * 16]), 32);
   }
   
-  // PCG定義(96~99,8x8)
-  for (int16_t i = 0; i <= 4; i++) {
+  // BG PCG定義(96~99,8x8)
+  for (int16_t i = 0; i < 4; i++) {
     memcpy((void*)PCG + 96 * 32 + i * 32, (void*)(&star_patterns[i * 16]), 32);
   }
 
-  // PCG定義(127,16x16)
+  // SPRITE PCG定義(64-67,16x16)
+  for (int16_t i = 0; i < 4; i++) {
+    memcpy((void*)PCG_64 + i * 128, (void*)(&sprite_star_patterns[i * 64]), 128);
+  }
+
+  // SPRITE PCG定義(127,16x16)
   for (int16_t i = 0; i <= 0; i++) {
-    memcpy((void*)PCG_127 + i * 128, (void*)(&peak_bar_patterns[i * 64]), 128);
+    memcpy((void*)PCG_127 + i * 128, (void*)(&sprite_peak_bar_patterns[i * 64]), 128);
   }
 
   // パレットブロック1,2: アンバー
@@ -639,6 +740,7 @@ int32_t spectrum_pcg_open(SPECTRUM_PCG_HANDLE* handle, SPECTRUM_STREAM_HANDLE* s
   for (int16_t i = 0; i < 16; i++) {
     if (i == 0) {
       PAL_BLK1[i] = 0x0000;
+      PAL_BLK2[i] = 0x0000;
     } else {
       int32_t ratio; 
       if (i < 8) {
@@ -675,6 +777,7 @@ int32_t spectrum_pcg_open(SPECTRUM_PCG_HANDLE* handle, SPECTRUM_STREAM_HANDLE* s
   for (int16_t i = 0; i < 16; i++) {
     if (i == 0) {
       PAL_BLK3[i] = 0x0000;
+      PAL_BLK4[i] = 0x0000;
     } else {
       int32_t ratio = 256 * i / 16;
       if (ratio > 256) ratio = 256;
@@ -704,6 +807,7 @@ int32_t spectrum_pcg_open(SPECTRUM_PCG_HANDLE* handle, SPECTRUM_STREAM_HANDLE* s
   for (int16_t i = 0; i < 16; i++) {
     if (i == 0) {
       PAL_BLK5[i] = 0x0000;
+      PAL_BLK6[i] = 0x0000;
     } else {
       int32_t ratio; 
       if (i < 8) {
@@ -733,28 +837,24 @@ int32_t spectrum_pcg_open(SPECTRUM_PCG_HANDLE* handle, SPECTRUM_STREAM_HANDLE* s
     }
   }
 
-  // バンド周波数の表示とピークホールドバー用スプライトの初期化
-  WAIT_VSYNC;
+  // バンド周波数の表示(16dot単位ではなく8dot単位なのでやむなく一旦バッファリング)
+  uint8_t tbuf[ 32 * 6 ];
+  memset(tbuf, 0, sizeof(tbuf));
+  for (int16_t b = 0; b < SPECTRUM_NUM_BANDS; b++) {
+    int16_t ofsL = (6 - b) * 2 + 1;
+    int16_t ofsR = (8 + b) * 2 + 1;
+    for (int16_t i = 0; i < 6; i++) {
+      tbuf[i * 32 + ofsL + 0] = band_labels[b][i] >> 8;
+      tbuf[i * 32 + ofsL + 1] = band_labels[b][i] & 0xff;
+      tbuf[i * 32 + ofsR + 0] = band_labels[b][i] >> 8;
+      tbuf[i * 32 + ofsR + 1] = band_labels[b][i] & 0xff;            
+    }
+  }
+  WAIT_VBLANK;
   _iocs_tpalet(1, PAL_BLK1[15]);
   uint16_t* TVRAM0 = (uint16_t*)(0xe00000);
-  for (int16_t b = 0; b < SPECTRUM_NUM_BANDS; b++) {
-    int16_t ofsL = 6 - b;
-    int16_t ofsR = 8 + b;
-    for (int16_t i = 0; i < 6; i++) {
-      int16_t ty = 0x40 * (200 + i);
-      TVRAM0[ty + ofsL] = band_labels[b][i];
-      TVRAM0[ty + ofsR] = band_labels[b][i];
-    }
-
-    SP_SCRL[ b * 2 * 4 + 0 ] = 16 + ofsL * 16;
-    SP_SCRL[ b * 2 * 4 + 1 ] = PEAK_HOLD_BAR_BASE_YPOS;
-    SP_SCRL[ b * 2 * 4 + 2 ] = 0x100 + 127;
-    SP_SCRL[ b * 2 * 4 + 3 ] = 3;
-
-    SP_SCRL[ b * 2 * 4 + 4 ] = 16 + ofsR * 16;
-    SP_SCRL[ b * 2 * 4 + 5 ] = PEAK_HOLD_BAR_BASE_YPOS;
-    SP_SCRL[ b * 2 * 4 + 6 ] = 0x100 + 127;
-    SP_SCRL[ b * 2 * 4 + 7 ] = 3;
+  for (int16_t i = 0; i < 6; i++) {
+    memcpy(&TVRAM0[0x40 * (200 + i)], &tbuf[i * 32], 32);
   }
 
   // BG TEXT1クリア
@@ -775,6 +875,30 @@ int32_t spectrum_pcg_open(SPECTRUM_PCG_HANDLE* handle, SPECTRUM_STREAM_HANDLE* s
         BG_TEXT0[ y * 64 + x ] = 0x300 + 96 + r;        
       }
     }
+  }
+
+  // ピークホールドバー用スプライトの初期化
+  for (int16_t b = 0; b < SPECTRUM_NUM_BANDS; b++) {
+    int16_t ofsL = 6 - b;
+    int16_t ofsR = 8 + b;
+
+    SP_SCRL[ b * 2 * 4 + 0 ] = 24 + ofsL * 16;
+    SP_SCRL[ b * 2 * 4 + 1 ] = PEAK_HOLD_BAR_BASE_YPOS;
+    SP_SCRL[ b * 2 * 4 + 2 ] = 0x100 + 127;
+    SP_SCRL[ b * 2 * 4 + 3 ] = 3;
+
+    SP_SCRL[ b * 2 * 4 + 4 ] = 24 + ofsR * 16;
+    SP_SCRL[ b * 2 * 4 + 5 ] = PEAK_HOLD_BAR_BASE_YPOS;
+    SP_SCRL[ b * 2 * 4 + 6 ] = 0x100 + 127;
+    SP_SCRL[ b * 2 * 4 + 7 ] = 3;
+  }
+
+  // ランダム星スプライトの初期化
+  for (int16_t i = 0; i < 16; i++) {
+    SP_SCRL[ (16 + i) * 4 + 0 ] = rand() % 288;
+    SP_SCRL[ (16 + i) * 4 + 1 ] = rand() % 512;
+    SP_SCRL[ (16 + i) * 4 + 2 ] = 0x500 + 64 + rand() % 4;
+    SP_SCRL[ (16 + i) * 4 + 3 ] = 2;    // BG0の後ろ、BG1の前    
   }
 
 //  *BG_CTRL = 0x203;   // SP/BG ON, BG0-BGTEXT1, BG0 ON 
