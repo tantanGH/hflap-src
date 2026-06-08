@@ -1,13 +1,13 @@
 # elf2x68k インストールパス
 ifndef ELF2X68K_DIR
-	ELF2X68K_DIR=/opt/homebrew/Cellar/elf2x68k/20260331
+	ELF2X68K_DIR=/opt/homebrew/Cellar/elf2x68k/20260602
 endif
 
 # デフォルトサフィックスを削除
 .SUFFIXES:
 
 # バージョン
-VERSION = 098
+VERSION = 099
 
 # 実行ファイル名
 TARGET_FILE_000 = HFLAP.X

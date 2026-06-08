@@ -7,3 +7,5 @@ src/_build060
 src/_work
 
 venv
+
+deploy.sh
