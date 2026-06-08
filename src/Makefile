@@ -1,13 +1,13 @@
 # elf2x68k インストールパス
 ifndef ELF2X68K_DIR
-	ELF2X68K_DIR=/opt/homebrew/Cellar/elf2x68k/20260331
+	ELF2X68K_DIR=/opt/homebrew/Cellar/elf2x68k/20260602
 endif
 
 # デフォルトサフィックスを削除
 .SUFFIXES:
 
 # バージョン
-VERSION = 098
+VERSION = 099
 
 # 実行ファイル名
 TARGET_FILE_000 = HFLAP.X
@@ -115,7 +115,7 @@ $(INTERMEDIATE_DIR_060)/%.o : %.c Makefile $(HEADER_SRCS)
 
 # 配布用パッケージ作成
 package:
-	zip -j ${PACKAGE_FILE} \
+	python3 make-safe-zip.py -j ${PACKAGE_FILE} \
 			${DOCUMENT_FILE} \
 			${INTERMEDIATE_DIR_000}/${TARGET_FILE_000} \
 			${INTERMEDIATE_DIR_030}/${TARGET_FILE_030} \
