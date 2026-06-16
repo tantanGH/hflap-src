@@ -589,15 +589,25 @@ try:
     if (playback_driver == DRIVER_PCM8A) {
 
       // continuous read
-      size_t remain_len = flac_decoder.continuous_read_len - flac_decoder.continuous_read_pos;
+      int32_t remain_len = flac_decoder.continuous_read_len - flac_decoder.continuous_read_pos;
       if (remain_len <= CONTINUOUS_FLAC_DRAIN_BYTES) {
         memcpy(fread_buffer, fread_buffer + flac_decoder.continuous_read_pos, remain_len);
-        size_t read_size = CONTINUOUS_FLAC_CONTINUE_BYTES - remain_len;
+        int32_t read_size = CONTINUOUS_FLAC_CONTINUE_BYTES - remain_len;
         if ((flac_decoder.flac_data_len - flac_decoder.flac_data_pos) < read_size) {
           read_size = flac_decoder.flac_data_len - flac_decoder.flac_data_pos;
         }
-        size_t len = _dos_read(fd, fread_buffer + remain_len, read_size);
-        flac_decoder.continuous_read_len = remain_len + len;
+        int32_t total_read = _dos_read(fd, fread_buffer + remain_len, read_size);
+
+        // 要求サイズに届かず、かつエラーやEOFでなければ、満たすまで回す
+        if (total_read > 0 && total_read < read_size) {
+          while (total_read < read_size) {
+            int32_t len = _dos_read(fd, fread_buffer + remain_len + total_read, read_size - total_read);
+            if (len <= 0) break;
+            total_read += len;
+          }
+        }
+
+        flac_decoder.continuous_read_len = remain_len + total_read;
         flac_decoder.continuous_read_pos = 0;
       }
 
@@ -668,15 +678,25 @@ try:
     if (playback_driver == DRIVER_PCM8PP) {
 
       // continuous read
-      size_t remain_len = flac_decoder.continuous_read_len - flac_decoder.continuous_read_pos;
+      int32_t remain_len = flac_decoder.continuous_read_len - flac_decoder.continuous_read_pos;
       if (remain_len <= CONTINUOUS_FLAC_DRAIN_BYTES) {
         memcpy(fread_buffer, fread_buffer + flac_decoder.continuous_read_pos, remain_len);
-        size_t read_size = CONTINUOUS_FLAC_CONTINUE_BYTES - remain_len;
+        int32_t read_size = CONTINUOUS_FLAC_CONTINUE_BYTES - remain_len;
         if ((flac_decoder.flac_data_len - flac_decoder.flac_data_pos) < read_size) {
           read_size = flac_decoder.flac_data_len - flac_decoder.flac_data_pos;
         }
-        size_t len = _dos_read(fd, fread_buffer + remain_len, read_size);
-        flac_decoder.continuous_read_len = remain_len + len;
+        int32_t total_read = _dos_read(fd, fread_buffer + remain_len, read_size);
+
+        // 要求サイズに届かず、かつエラーやEOFでなければ、満たすまで回す
+        if (total_read > 0 && total_read < read_size) {
+          while (total_read < read_size) {
+            int32_t len = _dos_read(fd, fread_buffer + remain_len + total_read, read_size - total_read);
+            if (len <= 0) break;
+            total_read += len;
+          }
+        }
+
+        flac_decoder.continuous_read_len = remain_len + total_read;
         flac_decoder.continuous_read_pos = 0;
       }
 
@@ -905,15 +925,25 @@ try:
       // decode additional data
 
       // continuous read
-      size_t remain_len = flac_decoder.continuous_read_len - flac_decoder.continuous_read_pos;
+      int32_t remain_len = flac_decoder.continuous_read_len - flac_decoder.continuous_read_pos;
       if (remain_len <= CONTINUOUS_FLAC_DRAIN_BYTES) {
         memcpy(fread_buffer, fread_buffer + flac_decoder.continuous_read_pos, remain_len);
-        size_t read_size = CONTINUOUS_FLAC_CONTINUE_BYTES - remain_len;
+        int32_t read_size = CONTINUOUS_FLAC_CONTINUE_BYTES - remain_len;
         if ((flac_decoder.flac_data_len - flac_decoder.flac_data_pos) < read_size) {
           read_size = flac_decoder.flac_data_len - flac_decoder.flac_data_pos;
         }
-        size_t len = _dos_read(fd, fread_buffer + remain_len, read_size);
-        flac_decoder.continuous_read_len = remain_len + len;
+        int32_t total_read = _dos_read(fd, fread_buffer + remain_len, read_size);
+
+        // 要求サイズに届かず、かつエラーやEOFでなければ、満たすまで回す
+        if (total_read > 0 && total_read < read_size) {
+          while (total_read < read_size) {
+            int32_t len = _dos_read(fd, fread_buffer + remain_len + total_read, read_size - total_read);
+            if (len <= 0) break;
+            total_read += len;
+          }
+        }
+
+        flac_decoder.continuous_read_len = remain_len + total_read;
         flac_decoder.continuous_read_pos = 0;
       }
 
@@ -1092,15 +1122,25 @@ try:
       // decode additional data
 
       // continuous read
-      size_t remain_len = flac_decoder.continuous_read_len - flac_decoder.continuous_read_pos;
+      int32_t remain_len = flac_decoder.continuous_read_len - flac_decoder.continuous_read_pos;
       if (remain_len <= CONTINUOUS_FLAC_DRAIN_BYTES) {
         memcpy(fread_buffer, fread_buffer + flac_decoder.continuous_read_pos, remain_len);
-        size_t read_size = CONTINUOUS_FLAC_CONTINUE_BYTES - remain_len;
+        int32_t read_size = CONTINUOUS_FLAC_CONTINUE_BYTES - remain_len;
         if ((flac_decoder.flac_data_len - flac_decoder.flac_data_pos) < read_size) {
           read_size = flac_decoder.flac_data_len - flac_decoder.flac_data_pos;
         }
-        size_t len = _dos_read(fd, fread_buffer + remain_len, read_size);
-        flac_decoder.continuous_read_len = remain_len + len;
+        int32_t total_read = _dos_read(fd, fread_buffer + remain_len, read_size);
+
+        // 要求サイズに届かず、かつエラーやEOFでなければ、満たすまで回す
+        if (total_read > 0 && total_read < read_size) {
+          while (total_read < read_size) {
+            int32_t len = _dos_read(fd, fread_buffer + remain_len + total_read, read_size - total_read);
+            if (len <= 0) break;
+            total_read += len;
+          }
+        }
+
+        flac_decoder.continuous_read_len = remain_len + total_read;
         flac_decoder.continuous_read_pos = 0;
       }
 
